@@ -17,9 +17,10 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
    * Teams NOT listed fall through to their teams.json default.
    * First occurrence wins if a team appears in multiple spec arrays.
    */
-  function buildFromSpec(spec) {
+  function buildFromSpec(spec, eraYear = null) {
     const m = {};
     ALL_CONFERENCES.forEach(c => (m[c.id] = []));
+    if (!m['fcs']) m['fcs'] = [];
 
     const placed = new Set();
     Object.entries(spec).forEach(([cid, ids]) => {
@@ -34,8 +35,12 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
 
     ALL_TEAMS.forEach(t => {
       if (!placed.has(t.id)) {
-        if (!m[t.conference]) m[t.conference] = [];
-        m[t.conference].push(t.id);
+        if (eraYear && t.fbs_since && t.fbs_since > eraYear) {
+          m['fcs'].push(t.id);
+        } else {
+          if (!m[t.conference]) m[t.conference] = [];
+          m[t.conference].push(t.id);
+        }
       }
     });
 
@@ -208,7 +213,7 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'rice', 'utsa', 'north-texas', 'uab', 'charlotte',
         ],
         'independent': ['notre-dame', 'byu', 'liberty', 'new-mexico-state'],
-      }),
+      }, 2014),
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -297,10 +302,10 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'florida-atlantic', // FBS 2002
         ],
         'cusa': [
-          'uab', 'utsa', // UTSA was not FBS yet; placeholder
-          'western-kentucky', 'fiu',
+          'uab', 'fiu',
+          'southern-miss', 'utep', 'rice', 'memphis', 'tulane', 'houston', 'smu',
         ],
-      }),
+      }, 2003),
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -382,47 +387,25 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
         // Independents — Notre Dame always; several others in this era
         'independent': [
           'notre-dame', 'army', 'navy',
-          'tulane',      // Independent before joining CUSA
-          'tulsa',       // Was in Missouri Valley / Independent before WAC
-          'east-carolina', // Was in Southern Conference / Independent
-          'memphis',     // Technically Memphis State; Independent before joining CUSA
-          'southern-miss', // Independent 1985–1994
-          'marshall',    // Was Southern Conference FCS in 1992; moved to FBS/MAC 1997
-          // Note: most "modern" G5 schools were FCS (I-AA) in 1992
+          'tulane', 'tulsa', 'east-carolina',
         ],
         // WAC overflow / misc FBS independents of 1992
         // UTEP was in the WAC; Louisiana Tech was independent/Southland
         // CUSA did not exist until 1995
         'aac': [
-          'utep',           // WAC member 1968–2005
-          'louisiana-tech', // Independent then Big West; not yet in CUSA
+          'louisiana-tech', // Independent then Big West
           'uab',            // Independent FBS program in early 1990s
-          'middle-tennessee', // Sun Belt FBS by 1999
-          'north-texas',    // Big West/Southland, FBS
         ],
         // Sun Belt FBS members in 1992 (conference went FBS in 2001;
         // many were FCS; only show legitimate FBS programs)
         'sun-belt': [
           'louisiana', 'louisiana-monroe', 'arkansas-state',
-          'texas-state',   // Southwest Texas State, FBS 1994
         ],
-        // Schools that were FCS (I-AA) in 1992 — historically not yet FBS.
-        // Grouped in cusa/independent as best available placeholder.
-        // App State (FCS until 2014), Georgia Southern (FCS dynasty until 2014),
-        // Troy (FCS until 2001), South Alabama (founded 2009), Georgia State (2010),
-        // Old Dominion (FCS until 2012), Coastal Carolina (FCS until 2017),
-        // James Madison (FCS until 2022), Western Kentucky (FCS until 2009),
-        // Sam Houston (FCS until 2022), Jacksonville State (FCS until 2022),
-        // Kennesaw State (FCS until 2023), Charlotte (FBS 2015), FIU (FBS 2002),
-        // Florida Atlantic (FBS 2001), UTSA (FBS 2012)
+        // CUSA did not exist in 1992, but these schools were FBS independents
         'cusa': [
-          'troy', 'south-alabama', 'georgia-southern', 'app-state',
-          'western-kentucky', 'old-dominion', 'coastal-carolina', 'james-madison',
-          'georgia-state', 'fiu', 'florida-atlantic', 'utsa', 'charlotte',
-          'sam-houston', 'jacksonville-state', 'kennesaw-state',
-          'southern-miss', 'marshall', // these were actually FBS in 1992
+          'southern-miss', 'utep', 'memphis',
         ],
-      }),
+      }, 1992),
     },
 
   ];

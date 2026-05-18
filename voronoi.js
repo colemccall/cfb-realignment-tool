@@ -11,6 +11,7 @@ const VORONOI_PANE_ID = 'voronoi-svg-overlay';
 
 // Module-level move handler so we can properly remove + re-add it
 let _currentMapMoveHandler = null;
+let _selectedTeamId = null;
 
 /**
  * renderVoronoi
@@ -137,8 +138,27 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
     circle.setAttribute('stroke-width', '2');
     circle.style.cursor = 'pointer';
 
+    // Selected ring
+    const isSelected = _selectedTeamId === pt.team.id;
+    if (isSelected) {
+      circle.setAttribute('r', '9');
+      circle.setAttribute('stroke', '#ffffff');
+      circle.setAttribute('stroke-width', '3');
+      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      ring.setAttribute('cx', pt.x);
+      ring.setAttribute('cy', pt.y);
+      ring.setAttribute('r', '12');
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', '#ffffff');
+      ring.setAttribute('stroke-width', '2');
+      ring.setAttribute('stroke-opacity', '0.8');
+      ring.style.pointerEvents = 'none';
+      dotsGroup.appendChild(ring);
+    }
+
     // Hover events
     circle.addEventListener('mouseenter', (e) => {
+      if (_selectedTeamId !== pt.team.id) circle.setAttribute('r', '9');
       const confName = getConfName(pt.confId);
       tooltip.innerHTML = `<strong>${pt.team.name}</strong><br/>${pt.team.city}, ${pt.team.state}<br/><em>${confName}</em>`;
       tooltip.style.display = 'block';
@@ -148,7 +168,21 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
       positionTooltip(e, tooltip, mapContainer);
     });
     circle.addEventListener('mouseleave', () => {
+      if (_selectedTeamId !== pt.team.id) circle.setAttribute('r', '7');
       tooltip.style.display = 'none';
+    });
+
+    // Click — fire teamDotClick custom event
+    circle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      tooltip.style.display = 'none';
+      _selectedTeamId = (_selectedTeamId === pt.team.id) ? null : pt.team.id;
+      if (_selectedTeamId) {
+        mapContainer.dispatchEvent(new CustomEvent('teamDotClick', { detail: pt.team, bubbles: true }));
+      } else {
+        mapContainer.dispatchEvent(new CustomEvent('mapBackgroundClick', { bubbles: true }));
+      }
+      renderVoronoi(teams, conferenceColors, leafletMap, state);
     });
 
     dotsGroup.appendChild(circle);
@@ -169,6 +203,15 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
       label.style.pointerEvents = 'none';
       label.textContent = pt.team.short;
       dotsGroup.appendChild(label);
+    }
+  });
+
+  // Background click → deselect
+  svg.addEventListener('click', () => {
+    if (_selectedTeamId) {
+      _selectedTeamId = null;
+      mapContainer.dispatchEvent(new CustomEvent('mapBackgroundClick', { bubbles: true }));
+      renderVoronoi(teams, conferenceColors, leafletMap, state);
     }
   });
 

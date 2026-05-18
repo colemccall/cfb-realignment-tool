@@ -12,5 +12,6 @@
   { "id": "sun-belt",      "name": "Sun Belt", "full_name": "Sun Belt Conference",            "color": "#E31837", "tier": 2 },
   { "id": "mac",           "name": "MAC",      "full_name": "Mid-American Conference",        "color": "#00529B", "tier": 3 },
   { "id": "cusa",          "name": "CUSA",     "full_name": "Conference USA",                 "color": "#0047BB", "tier": 3 },
-  { "id": "independent",  "name": "Ind",      "full_name": "FBS Independent",               "color": "#666666", "tier": 2 }
+  { "id": "independent",  "name": "Ind",      "full_name": "FBS Independent",               "color": "#666666", "tier": 2 },
+  { "id": "fcs",          "name": "FCS",      "full_name": "FCS / Not Yet FBS",             "color": "#888888", "tier": 4 }
 ]

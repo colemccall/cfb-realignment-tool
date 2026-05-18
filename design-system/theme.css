@@ -50,15 +50,15 @@
 
   /* Neutral surface scale */
   --bg:           #ffffff;
-  --surface:      #f7f7fb;
-  --surface-2:    #f0f0f6;
-  --border:       #e8e8f0;
-  --border-mid:   #d0d0e0;
+  --surface:      #f5f5fa;
+  --surface-2:    #e8e8f2;
+  --border:       #e0e0ec;
+  --border-mid:   #b8b8cc;
 
-  /* Text scale */
-  --text:         #111122;
-  --text-mid:     #555566;
-  --text-muted:   #9999aa;
+  /* Text scale — WCAG AA compliant */
+  --text:         #0d0d1a;
+  --text-mid:     #3d3d52;
+  --text-muted:   #6b6b80;
 
   /* State — shared across all apps */
   --correct:      #16a34a;

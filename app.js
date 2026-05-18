@@ -13,15 +13,25 @@ let ESPN_IDS        = {};
 
 const state = {
   conferences: {},
-  analytics: { travel: {}, rivalries: {}, tv_markets: {}, balance: {} },
+  analytics: { travel: {}, rivalries: {}, tv_markets: {}, balance: {}, strength: {} },
 };
 let baselineState = null;
 const history = { past: [], future: [] };
 const MAX_HISTORY = 50;
-let leafletMap   = null;
-let activeTab    = 'conferences';
-let draggedTeamId    = null;
-let dragSourceConfId = null;
+let leafletMap        = null;
+let activeTab         = 'conferences';
+let draggedTeamId     = null;
+let dragSourceConfId  = null;
+let selectedDotTeamId = null;  // for school card panel
+
+// Timeline snap points: year → preset id
+const TIMELINE_SNAPS = [
+  { year: 1992, id: 'big-8-swc-1992',   label: 'Big 8 + SWC Era' },
+  { year: 2003, id: 'big-east-era-2003', label: 'Big East Era' },
+  { year: 2014, id: 'modern-era-2014',   label: 'Modern Era' },
+  { year: 2024, id: 'chaos-2024',        label: 'Fall of the Pac-12' },
+  { year: 2026, id: 'new-pac-12-2026',   label: 'New Pac-12' },
+];
 
 // ─── BOOT ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +46,7 @@ async function init() {
   ESPN_IDS        = await espnRes.json();
 
   window.__appConferences = ALL_CONFERENCES;
+  window.__allTeams       = ALL_TEAMS;
 
   const defaultConf = {};
   ALL_CONFERENCES.forEach(c => (defaultConf[c.id] = []));
@@ -57,7 +68,13 @@ async function init() {
     const dd  = document.getElementById('presets-dropdown');
     const btn = document.getElementById('btn-presets');
     if (dd && !dd.contains(e.target) && e.target !== btn) dd.classList.remove('open');
+    const sd  = document.getElementById('scenarios-dropdown');
+    const sbtn = document.getElementById('btn-scenarios');
+    if (sd && !sd.contains(e.target) && e.target !== sbtn) sd.classList.remove('open');
   });
+  // School card dismiss on map background click
+  document.addEventListener('teamDotClick', (e) => showSchoolCard(e.detail));
+  document.addEventListener('mapBackgroundClick', () => hideSchoolCard());
 }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -83,6 +100,12 @@ function hashColor(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
   return `hsl(${((h >>> 0) % 360)}, 55%, 40%)`;
+}
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'k';
+  return String(n);
 }
 
 // ─── URL HASH ────────────────────────────────────────────────────────────────
@@ -164,6 +187,45 @@ function countTotalRivalries() {
   return counted.size;
 }
 
+function computeStrengthScores(conferences) {
+  const teamMap = {};
+  ALL_TEAMS.forEach(t => (teamMap[t.id] = t));
+
+  // Normalization bounds (across entire dataset)
+  const allAttendance = ALL_TEAMS.map(t => t.avg_attendance || 0);
+  const maxAttendance = Math.max(...allAttendance) || 1;
+  const allEnrollment = ALL_TEAMS.map(t => t.enrollment || 0);
+  const maxEnrollment = Math.max(...allEnrollment) || 1;
+  // DMA rank: lower = bigger market; best = 1, worst ~200
+  const MAX_DMA = 200;
+
+  const scores = {};
+  Object.entries(conferences).forEach(([cid, ids]) => {
+    if (ids.length === 0) return;
+    const teams = ids.map(id => teamMap[id]).filter(Boolean);
+    if (!teams.length) return;
+
+    // Attendance score (0–40)
+    const avgAtt = teams.reduce((s, t) => s + (t.avg_attendance || 0), 0) / teams.length;
+    const attScore = (avgAtt / maxAttendance) * 40;
+
+    // TV market score (0–30): inverse of avg DMA rank
+    const avgDMA = teams.reduce((s, t) => s + (t.tv_market_size || MAX_DMA), 0) / teams.length;
+    const tvScore = ((MAX_DMA - avgDMA) / MAX_DMA) * 30;
+
+    // Enrollment score (0–15)
+    const avgEnr = teams.reduce((s, t) => s + (t.enrollment || 0), 0) / teams.length;
+    const enrScore = (avgEnr / maxEnrollment) * 15;
+
+    // Balance bonus (0–15): reward 8–16 teams
+    const count = teams.length;
+    const balScore = count >= 8 && count <= 16 ? 15 : count >= 6 ? 8 : 3;
+
+    scores[cid] = Math.round(attScore + tvScore + enrScore + balScore);
+  });
+  return scores;
+}
+
 function recomputeAnalytics() {
   const confs = state.conferences;
   const travel = {};
@@ -188,15 +250,17 @@ function recomputeAnalytics() {
     tv_markets[cid] = ranked.slice(0, 5).map(r => r.market);
   });
 
-  const counts  = Object.values(confs).map(ids => ids.length);
+  const nonEmptyCounts = Object.values(confs).map(ids => ids.length).filter(n => n > 0);
   const balance = {
     counts: Object.fromEntries(Object.entries(confs).map(([cid, ids]) => [cid, ids.length])),
-    avg: counts.length ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : 0,
-    min: Math.min(...counts),
-    max: Math.max(...counts),
+    avg: nonEmptyCounts.length ? Math.round(nonEmptyCounts.reduce((a, b) => a + b, 0) / nonEmptyCounts.length) : 0,
+    min: nonEmptyCounts.length ? Math.min(...nonEmptyCounts) : 0,
+    max: nonEmptyCounts.length ? Math.max(...nonEmptyCounts) : 0,
   };
 
-  state.analytics = { travel, rivalries, tv_markets, balance };
+  const strength = computeStrengthScores(confs);
+
+  state.analytics = { travel, rivalries, tv_markets, balance, strength };
 }
 
 let _analyticsTimer = null;
@@ -237,12 +301,21 @@ function renderHeader() {
         <div class="header-actions">
           <button class="btn-action" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
           <button class="btn-action" id="btn-reset">Reset</button>
+          <div class="scenarios-wrap">
+            <button class="btn-action btn-action--primary" id="btn-scenarios">💾 Scenarios ▾</button>
+            <div class="scenarios-dropdown" id="scenarios-dropdown"></div>
+          </div>
           <div class="presets-wrap">
             <button class="btn-action btn-action--primary" id="btn-presets">Presets ▾</button>
             <div class="presets-dropdown" id="presets-dropdown"></div>
           </div>
           <button class="btn-action btn-action--primary" id="btn-export">📸 Export</button>
         </div>
+      </div>
+      <div class="timeline-wrap" id="timeline-wrap">
+        <span class="timeline-label" id="timeline-label">Era: <span>Current 2026</span></span>
+        <input type="range" class="timeline-slider" id="timeline-slider"
+               min="1985" max="2026" value="2026" step="1" />
       </div>
       <div id="ad-header" class="ad-placeholder ad-leaderboard"><span>Advertisement · 728×90</span></div>
       <div class="bs-tabs">
@@ -254,11 +327,20 @@ function renderHeader() {
   document.getElementById('btn-reset').addEventListener('click', handleReset);
   document.getElementById('btn-undo').addEventListener('click', undo);
   document.getElementById('btn-export').addEventListener('click', handleExport);
-  document.getElementById('btn-presets').addEventListener('click', togglePresetsDropdown);
+  document.getElementById('btn-presets').addEventListener('click', () => {
+    document.getElementById('presets-dropdown')?.classList.toggle('open');
+    document.getElementById('scenarios-dropdown')?.classList.remove('open');
+  });
+  document.getElementById('btn-scenarios').addEventListener('click', () => {
+    renderScenariosDropdown();
+    document.getElementById('scenarios-dropdown')?.classList.toggle('open');
+    document.getElementById('presets-dropdown')?.classList.remove('open');
+  });
   document.querySelectorAll('.bs-tab').forEach(tab => {
     tab.addEventListener('click', () => switchTab(tab.dataset.tab));
   });
   renderPresetsDropdown();
+  bindTimelineScrubber();
 }
 
 function renderPresetsDropdown() {
@@ -276,16 +358,138 @@ function renderPresetsDropdown() {
   });
 }
 
-function togglePresetsDropdown() {
-  document.getElementById('presets-dropdown')?.classList.toggle('open');
+// ─── TIMELINE SCRUBBER ───────────────────────────────────────────────────────
+
+let _timelineTimer = null;
+
+function bindTimelineScrubber() {
+  const slider = document.getElementById('timeline-slider');
+  if (!slider) return;
+  slider.addEventListener('input', () => {
+    const year = parseInt(slider.value, 10);
+    updateTimelineLabel(year);
+    clearTimeout(_timelineTimer);
+    _timelineTimer = setTimeout(() => {
+      const snap = getNearestSnap(year);
+      if (snap) applyPreset(snap.id, false); // false = don't update slider
+    }, 220);
+  });
 }
 
-// ─── RENDER: ANALYTICS PANEL ────────────────────────────────────────────────
+function getNearestSnap(year) {
+  return TIMELINE_SNAPS.reduce((best, snap) => {
+    return Math.abs(snap.year - year) < Math.abs(best.year - year) ? snap : best;
+  }, TIMELINE_SNAPS[0]);
+}
+
+function updateTimelineLabel(year) {
+  const snap = getNearestSnap(year);
+  const lbl = document.getElementById('timeline-label');
+  if (lbl) lbl.innerHTML = `Era: <span>${snap ? snap.label : year}</span>`;
+}
+
+function setTimelineToPreset(presetId) {
+  const snap = TIMELINE_SNAPS.find(s => s.id === presetId);
+  const slider = document.getElementById('timeline-slider');
+  if (slider && snap) {
+    slider.value = snap.year;
+    updateTimelineLabel(snap.year);
+  }
+}
+
+// ─── SCENARIOS (localStorage) ────────────────────────────────────────────────
+
+const SCENARIOS_KEY = 'cfb_scenarios';
+
+function loadScenarios() {
+  try { return JSON.parse(localStorage.getItem(SCENARIOS_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveScenarios(arr) {
+  localStorage.setItem(SCENARIOS_KEY, JSON.stringify(arr));
+}
+
+function saveScenario(name) {
+  const hash = encodeHash(state.conferences);
+  const scenarios = loadScenarios();
+  scenarios.unshift({ name, timestamp: Date.now(), hash });
+  if (scenarios.length > 20) scenarios.length = 20;
+  saveScenarios(scenarios);
+}
+
+function deleteScenario(index) {
+  const scenarios = loadScenarios();
+  scenarios.splice(index, 1);
+  saveScenarios(scenarios);
+}
+
+function renderScenariosDropdown() {
+  const dd = document.getElementById('scenarios-dropdown');
+  if (!dd) return;
+  const scenarios = loadScenarios();
+  const listHtml = scenarios.length === 0
+    ? `<div class="scenarios-empty">No saved scenarios yet.</div>`
+    : scenarios.map((s, i) => `
+        <div class="scenario-item">
+          <div class="scenario-info">
+            <span class="scenario-name">${escapeHtml(s.name)}</span>
+            <span class="scenario-date">${new Date(s.timestamp).toLocaleDateString()}</span>
+          </div>
+          <button class="btn-scenario-delete" data-index="${i}" title="Delete">×</button>
+        </div>
+      `).join('');
+  dd.innerHTML = `
+    ${listHtml}
+    <div class="scenarios-save-row">
+      <button class="btn-save-scenario" id="btn-save-now">Save Current Scenario</button>
+    </div>
+  `;
+  dd.querySelectorAll('.scenario-item').forEach((row, i) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-scenario-delete')) return;
+      const s = loadScenarios()[i];
+      if (!s) return;
+      loadScenarioHash(s.hash);
+      dd.classList.remove('open');
+    });
+  });
+  dd.querySelectorAll('.btn-scenario-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteScenario(parseInt(btn.dataset.index, 10));
+      renderScenariosDropdown();
+    });
+  });
+  document.getElementById('btn-save-now')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const name = window.prompt('Name this scenario:', 'My Realignment');
+    if (!name?.trim()) return;
+    saveScenario(name.trim());
+    showToast(`Saved "${name.trim()}"`);
+    renderScenariosDropdown();
+  });
+}
+
+function loadScenarioHash(hash) {
+  window.location.hash = hash;
+  const parsed = parseHash();
+  if (!parsed) return;
+  pushHistory();
+  state.conferences = parsed;
+  recomputeAnalytics(); renderAnalyticsPanel(); renderMain(); scheduleHashUpdate();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── RENDER: ANALYTICS PANEL ─────────────────────────────────────────────────
 
 function renderAnalyticsPanel() {
   const panel = document.getElementById('analytics-panel');
   if (!panel) return;
-  const { travel, rivalries, tv_markets, balance } = state.analytics;
+  const { travel, rivalries, tv_markets, balance, strength } = state.analytics;
 
   let travelBase = null, rivalBase = null;
   if (baselineState) {
@@ -303,7 +507,8 @@ function renderAnalyticsPanel() {
   const rDeltaCls = rivalBase  !== null ? deltaClass(rivalries.preserved, rivalBase, false) : 'flat';
   const rDeltaTxt = rivalBase  !== null ? deltaSymbol(rivalries.preserved, rivalBase) : '—';
 
-  const nonEmpty = ALL_CONFERENCES.filter(c => (balance.counts[c.id] || 0) > 0);
+  // Non-empty conferences (exclude FCS for analytics display)
+  const nonEmpty = ALL_CONFERENCES.filter(c => c.id !== 'fcs' && (balance.counts[c.id] || 0) > 0);
 
   const balanceRows = nonEmpty.map(c => {
     const count = balance.counts[c.id] || 0;
@@ -315,6 +520,23 @@ function renderAnalyticsPanel() {
   }).join('');
 
   const topMarkets = [...new Set(Object.values(tv_markets).flat())].slice(0, 5).join(', ') || '—';
+
+  // Strength scores sorted descending
+  const maxStrength = Math.max(...Object.values(strength), 1);
+  const strengthRows = nonEmpty
+    .filter(c => (strength[c.id] || 0) > 0)
+    .sort((a, b) => (strength[b.id] || 0) - (strength[a.id] || 0))
+    .map(c => {
+      const score = strength[c.id] || 0;
+      const pct   = Math.round((score / maxStrength) * 100);
+      return `<div class="strength-row">
+        <span class="strength-conf" style="color:${c.color}">${c.name}</span>
+        <div class="strength-bar-wrap">
+          <div class="strength-bar-fill" style="width:${pct}%;background:${c.color}"></div>
+        </div>
+        <span class="strength-score">${score}</span>
+      </div>`;
+    }).join('');
 
   panel.innerHTML = `
     <div class="analytics-header">
@@ -345,6 +567,10 @@ function renderAnalyticsPanel() {
         <div class="bs-analytic-sub">by DMA rank</div>
         <div class="bs-analytic-delta flat">&nbsp;</div>
       </div>
+    </div>
+    <div class="analytics-section">
+      <div class="analytics-section-title">Conference Strength</div>
+      ${strengthRows || '<div style="font-size:11px;color:var(--text-muted)">—</div>'}
     </div>
     <div class="analytics-section">
       <div class="analytics-section-title">Conference Balance</div>
@@ -389,13 +615,18 @@ function renderConferencesTab(container) {
     .filter(id => !knownIds.has(id))
     .map(id => ({ id, name: id, full_name: id, color: hashColor(id), tier: 2 }));
 
-  // Only show conferences that currently have at least one team
-  const allConfs = [...ALL_CONFERENCES, ...customConfs]
-    .filter(conf => (state.conferences[conf.id] || []).length > 0);
+  // Non-FCS conferences with teams; FCS column always last
+  const mainConfs = [...ALL_CONFERENCES, ...customConfs]
+    .filter(conf => conf.id !== 'fcs' && (state.conferences[conf.id] || []).length > 0);
+
+  const fcsConf = ALL_CONFERENCES.find(c => c.id === 'fcs');
+  const fcsTeams = state.conferences['fcs'] || [];
+  const showFcs = fcsTeams.length > 0 && fcsConf;
 
   container.innerHTML = `
     <div class="conf-board" id="conf-board">
-      ${allConfs.map(conf => renderConferenceColumn(conf, state.conferences[conf.id] || [], teamMap)).join('')}
+      ${mainConfs.map(conf => renderConferenceColumn(conf, state.conferences[conf.id] || [], teamMap)).join('')}
+      ${showFcs ? renderConferenceColumn(fcsConf, fcsTeams, teamMap, true) : ''}
       <div class="conf-column conf-column--add">
         <button class="btn-add-conf" id="btn-add-conf">+ New Conference</button>
       </div>
@@ -413,34 +644,37 @@ function renderConferencesTab(container) {
   document.getElementById('btn-add-conf')?.addEventListener('click', handleAddConference);
 }
 
-function renderConferenceColumn(conf, teamIds, teamMap) {
+function renderConferenceColumn(conf, teamIds, teamMap, isFcs = false) {
   const color = conf.color || hashColor(conf.id);
   const teams = teamIds.map(id => teamMap[id]).filter(Boolean);
+  const extraClass = isFcs ? ' conf-column--fcs' : '';
+  const displayName = isFcs ? 'FCS / Not Yet FBS' : (conf.full_name || conf.name);
   return `
-    <div class="conf-column" data-conf-id="${conf.id}" id="col-${conf.id}">
+    <div class="conf-column${extraClass}" data-conf-id="${conf.id}" id="col-${conf.id}">
       <div class="conf-col-header" style="border-top:3px solid ${color}">
         <div class="conf-col-title">
-          <span class="conf-col-name">${conf.full_name || conf.name}</span>
+          <span class="conf-col-name">${displayName}</span>
           <span class="conf-col-badge">${teams.length}</span>
         </div>
         <div class="conf-col-actions">
-          <button class="btn-rename-col" data-conf="${conf.id}" title="Rename">✏</button>
-          <button class="btn-delete-col" data-conf="${conf.id}" title="Remove">×</button>
+          ${!isFcs ? `<button class="btn-rename-col" data-conf="${conf.id}" title="Rename">✏</button>` : ''}
+          ${!isFcs ? `<button class="btn-delete-col" data-conf="${conf.id}" title="Remove">×</button>` : ''}
         </div>
       </div>
       <div class="conf-col-body droptarget" data-conf-id="${conf.id}">
-        ${teams.map(team => renderTeamCard(team, conf.id)).join('')}
+        ${teams.map(team => renderTeamCard(team, conf.id, isFcs)).join('')}
       </div>
     </div>
   `;
 }
 
-function renderTeamCard(team, confId) {
+function renderTeamCard(team, confId, isFcs = false) {
   const url = logoUrl(team.id);
   const logoHtml = url
     ? `<img class="team-logo" src="${url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
     : '';
   const swatchStyle = url ? 'display:none' : '';
+  const fcsBadge = isFcs ? `<span class="team-fcs-badge">FCS</span>` : '';
   return `
     <div class="team-card" draggable="true" data-team-id="${team.id}" data-conf-id="${confId}"
          title="${team.name} · ${team.city}, ${team.state}">
@@ -452,7 +686,8 @@ function renderTeamCard(team, confId) {
         <span class="team-card-name">${team.name}</span>
         <span class="team-card-meta">${team.city}, ${team.state}</span>
       </div>
-      <span class="team-card-short" style="color:${team.primary_color}">${team.short}</span>
+      ${fcsBadge}
+      <span class="team-card-short">${team.short}</span>
     </div>
   `;
 }
@@ -540,15 +775,12 @@ function handleRenameConference(confId) {
   if (newId !== confId && state.conferences[newId] !== undefined) {
     alert(`"${newId}" already exists.`); return;
   }
-  if (newId === confId) return; // name same as id, nothing to do (display name unchanged for built-in confs)
+  if (newId === confId) return;
   pushHistory();
-  // For custom confs: rename the key. For built-in confs we can't rename the key
-  // since analytics etc. depend on the id — instead we track display name overrides.
   if (!ALL_CONFERENCES.find(c => c.id === confId)) {
     state.conferences[newId] = state.conferences[confId];
     delete state.conferences[confId];
   } else {
-    // For built-in confs store a display override
     if (!state.renameOverrides) state.renameOverrides = {};
     state.renameOverrides[confId] = newName.trim();
   }
@@ -559,7 +791,10 @@ function handleRenameConference(confId) {
 // ─── RENDER: MAP TAB ─────────────────────────────────────────────────────────
 
 function renderMapTab(container) {
-  container.innerHTML = `<div id="leaflet-map" style="width:100%;height:100%;min-height:500px"></div>`;
+  container.innerHTML = `
+    <div id="leaflet-map" style="width:100%;height:100%;min-height:500px"></div>
+    <div id="school-card-panel"></div>
+  `;
   requestAnimationFrame(() => initMap());
 }
 
@@ -569,9 +804,11 @@ function initMap() {
   if (!mapEl) return;
   if (leafletMap) { leafletMap.remove(); leafletMap = null; }
   leafletMap = L.map('leaflet-map', { center: [38.5, -96.5], zoom: 4, zoomSnap: 0.5 });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 18,
+  // Gray basemap — Carto Positron (free, no API key)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
   }).addTo(leafletMap);
   renderMap();
 }
@@ -582,6 +819,84 @@ function renderMap() {
   ALL_CONFERENCES.forEach(c => (confColors[c.id] = c.color));
   Object.keys(state.conferences).forEach(id => { if (!confColors[id]) confColors[id] = hashColor(id); });
   renderVoronoi(ALL_TEAMS, confColors, leafletMap, state);
+}
+
+// ─── SCHOOL CARD PANEL ───────────────────────────────────────────────────────
+
+function showSchoolCard(team) {
+  const panel = document.getElementById('school-card-panel');
+  if (!panel) return;
+  selectedDotTeamId = team.id;
+
+  // Find current conference
+  let currentConfId = null;
+  Object.entries(state.conferences).forEach(([cid, ids]) => {
+    if (ids.includes(team.id)) currentConfId = cid;
+  });
+  const conf = ALL_CONFERENCES.find(c => c.id === currentConfId);
+  const color = conf ? conf.color : hashColor(currentConfId || '');
+  const confName = conf ? conf.full_name : (currentConfId || 'Independent');
+
+  const url = logoUrl(team.id);
+  const logoHtml = url
+    ? `<img class="sc-logo" src="${url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="sc-logo-swatch" style="background:${team.primary_color};display:none"></div>`
+    : `<div class="sc-logo-swatch" style="background:${team.primary_color}"></div>`;
+
+  // Resolve rivalry names
+  const teamMap = {};
+  ALL_TEAMS.forEach(t => (teamMap[t.id] = t));
+  const rivalNames = (team.rivalries || [])
+    .map(rid => teamMap[rid]?.name || rid)
+    .slice(0, 6);
+
+  panel.innerHTML = `
+    <div class="sc-header">
+      ${logoHtml}
+      <div class="sc-title">
+        <div class="sc-name">${team.name}</div>
+        <span class="sc-conf-badge" style="background:${color}">${confName}</span>
+      </div>
+      <button class="btn-sc-close" id="btn-sc-close">×</button>
+    </div>
+    <div class="sc-body">
+      <div class="sc-stat-row">
+        <span class="sc-stat-label">Location</span>
+        <span class="sc-stat-value">${team.city}, ${team.state}</span>
+      </div>
+      <div class="sc-stat-row">
+        <span class="sc-stat-label">Enrollment</span>
+        <span class="sc-stat-value">${fmtNum(team.enrollment || 0)}</span>
+      </div>
+      <div class="sc-stat-row">
+        <span class="sc-stat-label">Avg Attendance</span>
+        <span class="sc-stat-value">${fmtNum(team.avg_attendance || 0)}</span>
+      </div>
+      <div class="sc-stat-row">
+        <span class="sc-stat-label">TV Market</span>
+        <span class="sc-stat-value">${team.tv_market} (#${team.tv_market_size})</span>
+      </div>
+      ${rivalNames.length ? `
+        <div class="sc-rivalries">
+          <div class="sc-rivalries-label">Key Rivalries</div>
+          <div class="sc-rivalries-list">
+            ${rivalNames.map(n => `<span class="sc-rival-pill">${n}</span>`).join('')}
+          </div>
+        </div>` : ''}
+      <div class="sc-colors">
+        <div class="sc-color-chip" style="background:${team.primary_color}" title="Primary"></div>
+        ${team.secondary_color ? `<div class="sc-color-chip" style="background:${team.secondary_color}" title="Secondary"></div>` : ''}
+      </div>
+    </div>
+  `;
+
+  panel.classList.add('visible');
+  document.getElementById('btn-sc-close')?.addEventListener('click', hideSchoolCard);
+}
+
+function hideSchoolCard() {
+  const panel = document.getElementById('school-card-panel');
+  if (panel) panel.classList.remove('visible');
+  selectedDotTeamId = null;
 }
 
 // ─── TAB SWITCHING ───────────────────────────────────────────────────────────
@@ -626,17 +941,17 @@ function handleReset() {
   state.conferences = deepClone(defaultConf);
   baselineState     = deepClone(defaultConf);
   recomputeAnalytics(); renderAnalyticsPanel(); renderMain(); scheduleHashUpdate();
+  const slider = document.getElementById('timeline-slider');
+  if (slider) { slider.value = 2026; updateTimelineLabel(2026); }
 }
 
 // ─── EXPORT: CANVAS INFOGRAPHIC ──────────────────────────────────────────────
 
 async function handleExport() {
-  // Copy share URL to clipboard
   const url = window.location.href.split('#')[0] + encodeHash(state.conferences);
   try { await navigator.clipboard.writeText(url); showToast('Share URL copied!'); }
   catch { window.prompt('Copy URL:', url); }
 
-  // Generate canvas infographic
   const canvas = generateExportCanvas();
   const a = document.createElement('a');
   a.download = 'cfb-realignment.png';
@@ -646,193 +961,112 @@ async function handleExport() {
 }
 
 function generateExportCanvas() {
-  // Layout constants
   const W = 1200, PAD = 32;
   const HEADER_H = 90, FOOTER_H = 48, STATS_H = 64;
   const CONF_START_Y = HEADER_H + 16;
 
-  // Determine non-empty conferences
   const activeConfs = [...ALL_CONFERENCES, ...Object.keys(state.conferences)
     .filter(id => !ALL_CONFERENCES.find(c => c.id === id))
     .map(id => ({ id, name: id, full_name: id, color: hashColor(id) }))
-  ].filter(c => (state.conferences[c.id] || []).length > 0);
+  ].filter(c => c.id !== 'fcs' && (state.conferences[c.id] || []).length > 0);
 
   const teamMap = {};
   ALL_TEAMS.forEach(t => (teamMap[t.id] = t));
 
-  // Row height per team
-  const TEAM_ROW_H = 22;
-  const COL_HEADER_H = 46;
-  const maxTeams = Math.max(...activeConfs.map(c => (state.conferences[c.id] || []).length));
+  const TEAM_ROW_H = 22, COL_HEADER_H = 46;
+  const maxTeams = Math.max(...activeConfs.map(c => (state.conferences[c.id] || []).length), 1);
   const CONF_BLOCK_H = COL_HEADER_H + maxTeams * TEAM_ROW_H + 12;
-
   const H = HEADER_H + 16 + CONF_BLOCK_H + STATS_H + FOOTER_H + 16;
 
   const canvas = document.createElement('canvas');
-  canvas.width  = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Background
   ctx.fillStyle = '#0D1117';
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grid texture
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
-  // Header gradient bar
-  const grad = ctx.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0,   '#7C2D12');
-  grad.addColorStop(0.5, '#92400E');
-  grad.addColorStop(1,   '#7C2D12');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, HEADER_H);
+  const grad = ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0,'#7C2D12'); grad.addColorStop(0.5,'#92400E'); grad.addColorStop(1,'#7C2D12');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,HEADER_H);
 
-  // Title
   ctx.font = 'bold 36px "Barlow Condensed", Arial Narrow, Arial';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillText('🏈 CFB CONFERENCE REALIGNMENT SIMULATOR', PAD, HEADER_H * 0.42);
+  ctx.fillStyle = '#FFFFFF'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText('🏈 CFB CONFERENCE REALIGNMENT SIMULATOR', PAD, HEADER_H*0.42);
+  ctx.font = '16px "Inter", Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText(`cfb-realignment.app  ·  ${activeConfs.length} conferences  ·  ${ALL_TEAMS.length} teams`, PAD, HEADER_H*0.75);
 
-  ctx.font = '16px "Inter", Arial';
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.fillText(`cfb-realignment.app  ·  ${activeConfs.length} conferences  ·  ${ALL_TEAMS.length} teams`, PAD, HEADER_H * 0.75);
-
-  // Conference columns
   const cols = activeConfs.length;
-  const COL_W = Math.floor((W - PAD * 2 - (cols - 1) * 8) / cols);
-  let cx = PAD;
-  const cy = CONF_START_Y;
+  const COL_W = Math.floor((W - PAD*2 - (cols-1)*8) / cols);
+  let cx = PAD, cy = CONF_START_Y;
 
   activeConfs.forEach(conf => {
-    const teams = (state.conferences[conf.id] || []).map(id => teamMap[id]).filter(Boolean);
+    const teams = (state.conferences[conf.id]||[]).map(id=>teamMap[id]).filter(Boolean);
     const color = conf.color || hashColor(conf.id);
-
-    // Column background
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    roundRect(ctx, cx, cy, COL_W, CONF_BLOCK_H, 8);
-    ctx.fill();
-
-    // Top accent bar
-    ctx.fillStyle = color;
-    roundRectTop(ctx, cx, cy, COL_W, 4, 8);
-    ctx.fill();
-
-    // Conference name
-    ctx.font = `bold ${Math.min(14, Math.floor(COL_W / 8))}px "Barlow Condensed", Arial`;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    const label = conf.name || conf.id.toUpperCase();
-    ctx.fillText(label, cx + 10, cy + 16);
-
-    // Team count badge
-    ctx.font = 'bold 11px "Inter", Arial';
-    ctx.fillStyle = color;
-    ctx.fillText(`${teams.length}`, cx + COL_W - 28, cy + 16);
-
-    // Divider
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx + 8, cy + COL_HEADER_H - 4);
-    ctx.lineTo(cx + COL_W - 8, cy + COL_HEADER_H - 4);
-    ctx.stroke();
-
-    // Team rows
-    teams.forEach((team, i) => {
-      const ty = cy + COL_HEADER_H + i * TEAM_ROW_H + TEAM_ROW_H / 2;
-
-      // Color swatch
-      ctx.fillStyle = team.primary_color || color;
-      ctx.fillRect(cx + 8, ty - 7, 3, 14);
-
-      // Team name (truncate if needed)
-      ctx.font = `${Math.min(11, Math.floor(COL_W / 14))}px "Inter", Arial`;
-      ctx.fillStyle = '#E8E8E8';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const maxW = COL_W - 44;
-      let name = team.name;
-      while (ctx.measureText(name).width > maxW && name.length > 4) name = name.slice(0, -1);
-      if (name !== team.name) name += '…';
-      ctx.fillText(name, cx + 16, ty);
+    ctx.fillStyle='rgba(255,255,255,0.04)'; roundRect(ctx,cx,cy,COL_W,CONF_BLOCK_H,8); ctx.fill();
+    ctx.fillStyle=color; roundRectTop(ctx,cx,cy,COL_W,4,8); ctx.fill();
+    ctx.font=`bold ${Math.min(14,Math.floor(COL_W/8))}px "Barlow Condensed", Arial`;
+    ctx.fillStyle='#FFFFFF'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(conf.name||conf.id.toUpperCase(), cx+10, cy+16);
+    ctx.font='bold 11px "Inter", Arial'; ctx.fillStyle=color;
+    ctx.fillText(`${teams.length}`, cx+COL_W-28, cy+16);
+    ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(cx+8,cy+COL_HEADER_H-4); ctx.lineTo(cx+COL_W-8,cy+COL_HEADER_H-4); ctx.stroke();
+    teams.forEach((team,i) => {
+      const ty = cy+COL_HEADER_H+i*TEAM_ROW_H+TEAM_ROW_H/2;
+      ctx.fillStyle=team.primary_color||color; ctx.fillRect(cx+8,ty-7,3,14);
+      ctx.font=`${Math.min(11,Math.floor(COL_W/14))}px "Inter", Arial`;
+      ctx.fillStyle='#E8E8E8'; ctx.textAlign='left'; ctx.textBaseline='middle';
+      const maxW=COL_W-44; let name=team.name;
+      while(ctx.measureText(name).width>maxW&&name.length>4) name=name.slice(0,-1);
+      if(name!==team.name) name+='…';
+      ctx.fillText(name, cx+16, ty);
     });
-
-    cx += COL_W + 8;
+    cx += COL_W+8;
   });
 
-  // Stats bar
-  const statsY = cy + CONF_BLOCK_H + 12;
-  ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  roundRect(ctx, PAD, statsY, W - PAD * 2, STATS_H, 8);
-  ctx.fill();
-
+  const statsY = cy+CONF_BLOCK_H+12;
+  ctx.fillStyle='rgba(255,255,255,0.05)'; roundRect(ctx,PAD,statsY,W-PAD*2,STATS_H,8); ctx.fill();
   const { travel, rivalries, balance } = state.analytics;
   const stats = [
-    { label: 'Avg Travel', value: `${travel._overall.toLocaleString()} mi/conf` },
-    { label: 'Rivalries Preserved', value: `${rivalries.preserved}/${rivalries.total} (${rivalries.pct}%)` },
-    { label: 'Team Balance', value: `avg ${balance.avg} · min ${balance.min} · max ${balance.max}` },
-    { label: 'Conferences', value: `${activeConfs.length} active` },
+    { label:'Avg Travel', value:`${travel._overall.toLocaleString()} mi/conf` },
+    { label:'Rivalries Preserved', value:`${rivalries.preserved}/${rivalries.total} (${rivalries.pct}%)` },
+    { label:'Team Balance', value:`avg ${balance.avg} · min ${balance.min} · max ${balance.max}` },
+    { label:'Conferences', value:`${activeConfs.length} active` },
   ];
-  const statW = (W - PAD * 2) / stats.length;
-  stats.forEach((s, i) => {
-    const sx = PAD + i * statW + statW / 2;
-    const sy = statsY + STATS_H / 2;
-    ctx.font = 'bold 18px "Barlow Condensed", Arial';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(s.value, sx, sy - 8);
-    ctx.font = '11px "Inter", Arial';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillText(s.label.toUpperCase(), sx, sy + 12);
+  const statW=(W-PAD*2)/stats.length;
+  stats.forEach((s,i) => {
+    const sx=PAD+i*statW+statW/2, sy=statsY+STATS_H/2;
+    ctx.font='bold 18px "Barlow Condensed", Arial'; ctx.fillStyle='#FFFFFF';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.value, sx, sy-8);
+    ctx.font='11px "Inter", Arial'; ctx.fillStyle='rgba(255,255,255,0.45)';
+    ctx.fillText(s.label.toUpperCase(), sx, sy+12);
   });
 
-  // Footer
-  const footerY = statsY + STATS_H + 8;
-  ctx.font = '12px "Inter", Arial';
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('Made with cfb-realignment.app — github.com/colemccall/cfb-realignment-tool', W / 2, footerY + FOOTER_H / 2);
-
+  const footerY=statsY+STATS_H+8;
+  ctx.font='12px "Inter", Arial'; ctx.fillStyle='rgba(255,255,255,0.25)';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('Made with cfb-realignment.app — github.com/colemccall/cfb-realignment-tool', W/2, footerY+FOOTER_H/2);
   return canvas;
 }
 
-// Canvas helpers
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+function roundRect(ctx,x,y,w,h,r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
 }
-function roundRectTop(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h);
-  ctx.lineTo(x, y + h);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+function roundRectTop(ctx,x,y,w,h,r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h); ctx.lineTo(x,y+h); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
 }
 
 // ─── PRESETS ─────────────────────────────────────────────────────────────────
 
-function applyPreset(presetId) {
+function applyPreset(presetId, updateSlider = true) {
   const preset = getPresets(ALL_TEAMS, ALL_CONFERENCES).find(p => p.id === presetId);
   if (!preset) return;
   pushHistory();
@@ -840,7 +1074,9 @@ function applyPreset(presetId) {
   ALL_CONFERENCES.forEach(c => { if (!newConf[c.id]) newConf[c.id] = []; });
   state.conferences = newConf;
   document.getElementById('presets-dropdown')?.classList.remove('open');
+  if (updateSlider) setTimelineToPreset(presetId);
   recomputeAnalytics(); renderAnalyticsPanel(); renderMain(); scheduleHashUpdate();
+  showToast(`Loaded: ${preset.name}`);
 }
 
 // ─── KEYBOARD ────────────────────────────────────────────────────────────────
