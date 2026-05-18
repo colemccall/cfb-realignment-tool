@@ -389,7 +389,9 @@ function renderConferencesTab(container) {
     .filter(id => !knownIds.has(id))
     .map(id => ({ id, name: id, full_name: id, color: hashColor(id), tier: 2 }));
 
-  const allConfs = [...ALL_CONFERENCES, ...customConfs];
+  // Only show conferences that currently have at least one team
+  const allConfs = [...ALL_CONFERENCES, ...customConfs]
+    .filter(conf => (state.conferences[conf.id] || []).length > 0);
 
   container.innerHTML = `
     <div class="conf-board" id="conf-board">
