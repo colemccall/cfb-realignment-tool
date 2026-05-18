@@ -1,0 +1,50 @@
+{
+  "alabama": 333, "auburn": 2, "georgia": 61, "florida": 57, "tennessee": 2633,
+  "lsu": 99, "ole-miss": 145, "mississippi-state": 344, "arkansas": 8,
+  "south-carolina": 2579, "missouri": 142, "vanderbilt": 238, "kentucky": 96,
+  "texas-am": 245, "texas": 251, "oklahoma": 201,
+
+  "ohio-state": 194, "michigan": 130, "penn-state": 213, "michigan-state": 127,
+  "wisconsin": 275, "iowa": 2294, "minnesota": 135, "nebraska": 158,
+  "illinois": 356, "purdue": 2509, "indiana": 84, "northwestern": 77,
+  "rutgers": 164, "maryland": 120, "oregon": 2483, "usc": 30, "ucla": 26,
+  "washington": 264,
+
+  "texas-tech": 2641, "tcu": 2628, "baylor": 239, "oklahoma-state": 197,
+  "kansas": 2305, "kansas-state": 2306, "west-virginia": 277, "iowa-state": 66,
+  "cincinnati": 2132, "houston": 248, "ucf": 2116, "byu": 252, "colorado": 38,
+  "arizona": 12, "arizona-state": 9, "utah": 254,
+
+  "clemson": 228, "florida-state": 52, "miami": 2390, "louisville": 97,
+  "nc-state": 152, "north-carolina": 153, "duke": 150, "wake-forest": 154,
+  "virginia": 258, "virginia-tech": 259, "boston-college": 103, "pitt": 221,
+  "syracuse": 183, "georgia-tech": 59, "stanford": 24, "california": 25,
+  "smu": 2567,
+
+  "memphis": 235, "tulane": 2655, "tulsa": 202, "navy": 160, "army": 349,
+  "east-carolina": 151, "temple": 218, "usf": 58, "charlotte": 2429,
+  "north-texas": 249, "uab": 373, "rice": 242, "utsa": 2636,
+  "florida-atlantic": 2226,
+
+  "boise-state": 68, "fresno-state": 278, "utah-state": 328, "unlv": 2439,
+  "colorado-state": 36, "air-force": 2005, "san-diego-state": 21, "nevada": 2440,
+  "new-mexico": 167, "wyoming": 2751, "san-jose-state": 23, "hawaii": 62,
+
+  "app-state": 2026, "georgia-southern": 290, "georgia-state": 2247,
+  "louisiana": 309, "louisiana-monroe": 2433, "south-alabama": 6,
+  "arkansas-state": 2032, "troy": 2653, "texas-state": 326, "marshall": 276,
+  "old-dominion": 295, "southern-miss": 2572, "coastal-carolina": 324,
+  "james-madison": 256,
+
+  "ohio": 195, "miami-oh": 193, "bowling-green": 189, "ball-state": 2050,
+  "buffalo": 2084, "akron": 2006, "kent-state": 2309, "western-michigan": 2711,
+  "central-michigan": 2117, "eastern-michigan": 2199, "northern-illinois": 2459,
+  "toledo": 2603,
+
+  "utep": 2638, "louisiana-tech": 2348, "middle-tennessee": 2393,
+  "jacksonville-state": 55, "kennesaw-state": 2391, "sam-houston": 2534,
+  "western-kentucky": 2729, "fiu": 2229,
+
+  "notre-dame": 87, "liberty": 2335, "uconn": 41, "new-mexico-state": 166,
+  "oregon-state": 204, "washington-state": 265
+}

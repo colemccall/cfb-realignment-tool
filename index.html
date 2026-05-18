@@ -298,16 +298,25 @@
       border-radius: 99px;
       flex-shrink: 0;
     }
+    .conf-col-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .btn-rename-col,
     .btn-delete-col {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 16px;
+      font-size: 13px;
       cursor: pointer;
-      padding: 0 0 0 4px;
+      padding: 2px 4px;
       line-height: 1;
-      flex-shrink: 0;
+      border-radius: 3px;
+      transition: color 0.1s, background 0.1s;
     }
+    .btn-rename-col:hover { color: var(--accent); background: var(--accent-light); }
     .btn-delete-col:hover { color: var(--wrong); }
 
     .conf-col-body {
@@ -350,11 +359,25 @@
       cursor: grabbing;
     }
 
+    /* Logo / swatch wrapper */
+    .team-logo-wrap {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .team-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      border-radius: 3px;
+    }
     .team-card-swatch {
       width: 4px;
-      height: 32px;
+      height: 28px;
       border-radius: 2px;
-      flex-shrink: 0;
     }
     .team-card-body {
       flex: 1;
@@ -408,7 +431,13 @@
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
        MAP TAB
     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* Map fills full main-content height */
+    #main-content {
+      position: relative;
+    }
     #leaflet-map {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
       z-index: 1;
     }
 
@@ -442,17 +471,21 @@
        RESPONSIVE
     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     @media (max-width: 700px) {
-      html, body, #app { overflow: auto; height: auto; min-height: 100dvh; }
-      #app { flex-direction: column; }
-      #app-body { flex-direction: column; overflow: visible; }
+      html, body { height: 100%; overflow: hidden; }
+      #app { height: 100dvh; overflow: hidden; }
+      #app-body { flex-direction: column; overflow: hidden; }
       #analytics-sidebar { display: none; }
-      #leaflet-map { height: 65dvh !important; }
+      /* Map tab: static height in mobile */
+      #main-content { overflow: auto; }
+      #leaflet-map { position: static !important; height: 60dvh !important; }
       .conf-board { flex-direction: column; min-width: unset; padding: 10px; gap: 8px; }
       .conf-column { width: 100%; }
       .bs-header-top { flex-wrap: wrap; gap: 6px; }
-      .header-actions { flex-wrap: wrap; }
+      .header-actions { flex-wrap: wrap; gap: 4px; }
       .ad-leaderboard { display: none; }
       .team-card { padding: 5px 8px; }
+      .team-logo { width: 22px; height: 22px; }
+      .team-logo-wrap { width: 22px; height: 22px; }
     }
   </style>
 </head>
