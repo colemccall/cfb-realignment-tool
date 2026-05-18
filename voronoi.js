@@ -153,21 +153,23 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
 
     dotsGroup.appendChild(circle);
 
-    // Team short label
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', pt.x);
-    label.setAttribute('y', pt.y - 10);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-family', 'Barlow Condensed, sans-serif');
-    label.setAttribute('font-size', '10');
-    label.setAttribute('font-weight', '700');
-    label.setAttribute('fill', '#ffffff');
-    label.setAttribute('stroke', 'rgba(0,0,0,0.6)');
-    label.setAttribute('stroke-width', '2');
-    label.setAttribute('paint-order', 'stroke');
-    label.style.pointerEvents = 'none';
-    label.textContent = pt.team.short;
-    dotsGroup.appendChild(label);
+    // Team short label — only at zoom 6+ to avoid clutter with 130+ teams
+    if (leafletMap.getZoom() >= 6) {
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', pt.x);
+      label.setAttribute('y', pt.y - 10);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-family', 'Barlow Condensed, sans-serif');
+      label.setAttribute('font-size', '10');
+      label.setAttribute('font-weight', '700');
+      label.setAttribute('fill', '#ffffff');
+      label.setAttribute('stroke', 'rgba(0,0,0,0.6)');
+      label.setAttribute('stroke-width', '2');
+      label.setAttribute('paint-order', 'stroke');
+      label.style.pointerEvents = 'none';
+      label.textContent = pt.team.short;
+      dotsGroup.appendChild(label);
+    }
   });
 
   // Re-render when map pans / zooms — remove old handler first to avoid duplicates

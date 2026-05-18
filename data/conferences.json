@@ -1,30 +1,12 @@
 [
-  {
-    "id": "sec",
-    "name": "SEC",
-    "full_name": "Southeastern Conference",
-    "color": "#003087",
-    "tier": 1
-  },
-  {
-    "id": "big-ten",
-    "name": "Big Ten",
-    "full_name": "Big Ten Conference",
-    "color": "#0088CE",
-    "tier": 1
-  },
-  {
-    "id": "big-12",
-    "name": "Big 12",
-    "full_name": "Big 12 Conference",
-    "color": "#003087",
-    "tier": 1
-  },
-  {
-    "id": "mountain-west",
-    "name": "Mountain West",
-    "full_name": "Mountain West Conference",
-    "color": "#005EB8",
-    "tier": 2
-  }
+  { "id": "sec",           "name": "SEC",          "full_name": "Southeastern Conference",      "color": "#003087", "tier": 1 },
+  { "id": "big-ten",       "name": "Big Ten",       "full_name": "Big Ten Conference",           "color": "#0088CE", "tier": 1 },
+  { "id": "big-12",        "name": "Big 12",        "full_name": "Big 12 Conference",            "color": "#FF6600", "tier": 1 },
+  { "id": "acc",           "name": "ACC",           "full_name": "Atlantic Coast Conference",    "color": "#013CA6", "tier": 1 },
+  { "id": "aac",           "name": "AAC",           "full_name": "American Athletic Conference", "color": "#000000", "tier": 2 },
+  { "id": "mountain-west", "name": "MWC",           "full_name": "Mountain West Conference",     "color": "#005EB8", "tier": 2 },
+  { "id": "sun-belt",      "name": "Sun Belt",      "full_name": "Sun Belt Conference",          "color": "#E31837", "tier": 2 },
+  { "id": "mac",           "name": "MAC",           "full_name": "Mid-American Conference",      "color": "#00529B", "tier": 3 },
+  { "id": "cusa",          "name": "CUSA",          "full_name": "Conference USA",               "color": "#0047BB", "tier": 3 },
+  { "id": "independent",   "name": "Ind",           "full_name": "FBS Independent",             "color": "#666666", "tier": 2 }
 ]

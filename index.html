@@ -442,16 +442,17 @@
        RESPONSIVE
     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     @media (max-width: 700px) {
-      #analytics-sidebar {
-        display: none;
-      }
-      .conf-board {
-        flex-direction: column;
-        min-width: unset;
-      }
-      .conf-column {
-        width: 100%;
-      }
+      html, body, #app { overflow: auto; height: auto; min-height: 100dvh; }
+      #app { flex-direction: column; }
+      #app-body { flex-direction: column; overflow: visible; }
+      #analytics-sidebar { display: none; }
+      #leaflet-map { height: 65dvh !important; }
+      .conf-board { flex-direction: column; min-width: unset; padding: 10px; gap: 8px; }
+      .conf-column { width: 100%; }
+      .bs-header-top { flex-wrap: wrap; gap: 6px; }
+      .header-actions { flex-wrap: wrap; }
+      .ad-leaderboard { display: none; }
+      .team-card { padding: 5px 8px; }
     }
   </style>
 </head>
