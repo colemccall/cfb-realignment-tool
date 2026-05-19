@@ -47,26 +47,43 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
     // ═══════════════════════════════════════════════════════════════════════
     // 1 · 2026 — NEW PAC-12
     //
-    // The Pac-12 brand revived July 1, 2026. Oregon State and Washington State
-    // anchor the conference alongside 8 Mountain West defectors: Boise State,
-    // Colorado State, Fresno State, San Diego State, Utah State, UNLV, Nevada,
-    // Wyoming. Texas State also joins from the Sun Belt.
-    // Remaining MWC: Air Force, New Mexico, San Jose State, Hawaii, UTEP.
+    // Pac-12 relaunches July 1, 2026 with 8 football-playing schools:
+    //   Oregon State, Washington State (survivors) + 5 MWC defectors:
+    //   Boise State, Colorado State, Fresno State, San Diego State, Utah State
+    //   + Texas State from Sun Belt (confirmed June 30, 2025, $5M exit fee paid)
+    //   Gonzaga joins as non-football all-sports member only.
+    //
+    // UNLV, Nevada, and Wyoming did NOT join the new Pac-12 — they stayed MWC.
+    //
+    // Mountain West 2026 (8 full members): Air Force, Hawaii, Nevada, New Mexico,
+    //   San Jose State, UNLV, UTEP (from CUSA), Wyoming.
+    //   Northern Illinois joins as football-only member from MAC.
+    //
+    // Sun Belt 2026 gains Louisiana Tech from CUSA.
+    //   Texas State departs → Sun Belt drops to 13 football members.
+    //
+    // CUSA 2026 loses UTEP (→ MWC) and Louisiana Tech (→ Sun Belt).
+    //
     // Big Ten 18, SEC 16, Big 12 16, ACC 17 all unchanged from 2024.
-    // Temple remains independent after AAC expulsion in 2024.
     // ═══════════════════════════════════════════════════════════════════════
     {
       id: 'new-pac-12-2026',
       name: '2026 — New Pac-12',
-      description: 'Pac-12 reborn with OSU, WSU + 8 MWC defectors + Texas State. Big Ten 18, SEC 16, ACC 17 intact.',
+      description: 'Pac-12 reborn: OSU + WSU + 5 MWC defectors + Texas State (8 football). MWC keeps UNLV/Nevada/Wyoming.',
       getConferences: () => buildFromSpec({
+        // New Pac-12 — 8 football members (Gonzaga is non-football only, omitted)
         'pac-12': [
           'oregon-state', 'washington-state',
-          'boise-state', 'colorado-state', 'fresno-state', 'utah-state',
-          'san-diego-state', 'unlv', 'nevada', 'wyoming', 'texas-state',
+          'boise-state', 'colorado-state', 'fresno-state',
+          'san-diego-state', 'utah-state', 'texas-state',
         ],
-        // MWC remnant: 5 schools remain after losing 7 to Pac-12 + UTEP joins from CUSA
-        'mountain-west': ['air-force', 'new-mexico', 'san-jose-state', 'hawaii', 'utep'],
+        // Mountain West 2026 — 8 full members after losing 5 to Pac-12; gains UTEP
+        // Northern Illinois joins as football-only (still shows as MWC in this tool)
+        'mountain-west': [
+          'air-force', 'hawaii', 'nevada', 'new-mexico',
+          'san-jose-state', 'unlv', 'utep', 'wyoming',
+          'northern-illinois', // football-only member from MAC
+        ],
         'big-ten': [
           'ohio-state', 'michigan', 'penn-state', 'michigan-state', 'wisconsin',
           'iowa', 'minnesota', 'nebraska', 'illinois', 'purdue', 'indiana',
@@ -91,8 +108,26 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'stanford', 'california', 'smu',
         ],
         'aac': [
-          'memphis', 'tulane', 'tulsa', 'navy', 'army', 'east-carolina',
-          'usf', 'charlotte', 'north-texas', 'uab', 'rice', 'utsa', 'florida-atlantic',
+          'army', 'charlotte', 'east-carolina', 'florida-atlantic', 'memphis',
+          'navy', 'north-texas', 'rice', 'tulane', 'tulsa', 'uab', 'usf', 'utsa',
+        ],
+        // Sun Belt 2026 gains Louisiana Tech; loses Texas State (→ Pac-12)
+        'sun-belt': [
+          'app-state', 'arkansas-state', 'coastal-carolina', 'georgia-southern',
+          'georgia-state', 'james-madison', 'louisiana', 'louisiana-monroe',
+          'louisiana-tech', // joins from CUSA
+          'marshall', 'old-dominion', 'south-alabama', 'southern-miss', 'troy',
+        ],
+        // CUSA 2026 loses UTEP and Louisiana Tech
+        'cusa': [
+          'fiu', 'jacksonville-state', 'kennesaw-state', 'liberty',
+          'middle-tennessee', 'new-mexico-state', 'sam-houston', 'western-kentucky',
+        ],
+        'mac': [
+          'akron', 'ball-state', 'bowling-green', 'buffalo', 'central-michigan',
+          'eastern-michigan', 'kent-state', 'miami-oh', 'ohio', 'toledo',
+          'western-michigan',
+          // Northern Illinois → football-only MWC; MAC may add UMass (not in DB)
         ],
         'independent': ['notre-dame', 'uconn', 'new-mexico-state', 'temple'],
       }),
