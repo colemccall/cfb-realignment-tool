@@ -71,6 +71,13 @@ async function init() {
     const sd  = document.getElementById('scenarios-dropdown');
     const sbtn = document.getElementById('btn-scenarios');
     if (sd && !sd.contains(e.target) && e.target !== sbtn) sd.classList.remove('open');
+    // Close mobile analytics panel when tapping main content
+    const sidebar = document.getElementById('analytics-sidebar');
+    const toggleBtn = document.getElementById('btn-analytics-toggle');
+    if (sidebar?.classList.contains('mobile-open') &&
+        !sidebar.contains(e.target) && e.target !== toggleBtn) {
+      sidebar.classList.remove('mobile-open');
+    }
   });
   // School card dismiss on map background click
   document.addEventListener('teamDotClick', (e) => showSchoolCard(e.detail));
@@ -80,6 +87,64 @@ async function init() {
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 
 function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// ─── MOBILE-SAFE MODALS ──────────────────────────────────────────────────────
+// Replaces window.prompt / confirm / alert which are blocked in some mobile contexts.
+
+function showModal({ title = '', message = '', input = false, inputDefault = '', inputPlaceholder = '',
+                     confirmLabel = 'OK', cancelLabel = null, danger = false }) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    `;
+    const box = document.createElement('div');
+    box.style.cssText = `
+      background:#fff;border-radius:12px;padding:20px 24px;max-width:360px;width:100%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:var(--font-body);
+    `;
+    box.innerHTML = `
+      ${title ? `<div style="font-weight:700;font-size:16px;margin-bottom:8px">${title}</div>` : ''}
+      ${message ? `<div style="font-size:14px;color:#444;margin-bottom:12px">${message}</div>` : ''}
+      ${input ? `<input id="_modal_input" type="text" value="${inputDefault}"
+        placeholder="${inputPlaceholder}"
+        style="width:100%;padding:8px 10px;border:1.5px solid #ccc;border-radius:6px;
+               font-size:14px;box-sizing:border-box;margin-bottom:14px;outline:none;" />` : ''}
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        ${cancelLabel ? `<button id="_modal_cancel" style="padding:7px 16px;border-radius:6px;
+          border:1.5px solid #ccc;background:#fff;font-size:14px;cursor:pointer">${cancelLabel}</button>` : ''}
+        <button id="_modal_ok" style="padding:7px 16px;border-radius:6px;border:none;
+          background:${danger ? '#dc2626' : 'var(--accent, #92400E)'};color:#fff;
+          font-size:14px;font-weight:600;cursor:pointer">${confirmLabel}</button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const inp = box.querySelector('#_modal_input');
+    if (inp) { inp.focus(); inp.select(); }
+
+    const finish = (val) => { overlay.remove(); resolve(val); };
+
+    box.querySelector('#_modal_ok').addEventListener('click', () => {
+      finish(input ? (inp?.value ?? '') : true);
+    });
+    box.querySelector('#_modal_cancel')?.addEventListener('click', () => finish(null));
+    overlay.addEventListener('click', e => { if (e.target === overlay) finish(null); });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Enter') finish(input ? (inp?.value ?? '') : true);
+      if (e.key === 'Escape') finish(null);
+    });
+  });
+}
+
+function mAlert(msg)               { return showModal({ message: msg, confirmLabel: 'OK' }); }
+function mConfirm(msg, danger)     { return showModal({ message: msg, confirmLabel: 'Yes', cancelLabel: 'Cancel', danger }); }
+function mPrompt(msg, def = '', ph = '') {
+  return showModal({ message: msg, input: true, inputDefault: def, inputPlaceholder: ph,
+                     confirmLabel: 'OK', cancelLabel: 'Cancel' });
+}
 
 function logoUrl(teamId) {
   const id = ESPN_IDS[teamId];
@@ -299,6 +364,7 @@ function renderHeader() {
           <div class="bs-logo-sub">Drag teams. Redraw the map. Break the internet.</div>
         </div>
         <div class="header-actions">
+          <button class="btn-action" id="btn-analytics-toggle" title="Analytics">📊 Stats</button>
           <button class="btn-action" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
           <button class="btn-action" id="btn-reset">Reset</button>
           <div class="scenarios-wrap">
@@ -326,6 +392,9 @@ function renderHeader() {
   `;
   document.getElementById('btn-reset').addEventListener('click', handleReset);
   document.getElementById('btn-undo').addEventListener('click', undo);
+  document.getElementById('btn-analytics-toggle')?.addEventListener('click', () => {
+    document.getElementById('analytics-sidebar')?.classList.toggle('mobile-open');
+  });
   document.getElementById('btn-export').addEventListener('click', handleExport);
   document.getElementById('btn-presets').addEventListener('click', () => {
     document.getElementById('presets-dropdown')?.classList.toggle('open');
@@ -461,9 +530,9 @@ function renderScenariosDropdown() {
       renderScenariosDropdown();
     });
   });
-  document.getElementById('btn-save-now')?.addEventListener('click', (e) => {
+  document.getElementById('btn-save-now')?.addEventListener('click', async (e) => {
     e.stopPropagation();
-    const name = window.prompt('Name this scenario:', 'My Realignment');
+    const name = await mPrompt('Name this scenario:', 'My Realignment', 'e.g. Super SEC');
     if (!name?.trim()) return;
     saveScenario(name.trim());
     showToast(`Saved "${name.trim()}"`);
@@ -698,6 +767,9 @@ function bindDragDrop() {
   document.querySelectorAll('.team-card[draggable]').forEach(card => {
     card.addEventListener('dragstart', onDragStart);
     card.addEventListener('dragend',   onDragEnd);
+    card.addEventListener('touchstart', onTouchStart, { passive: false });
+    card.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    card.addEventListener('touchend',   onTouchEnd,   { passive: false });
   });
   document.querySelectorAll('.droptarget').forEach(target => {
     target.addEventListener('dragover',  onDragOver);
@@ -730,25 +802,117 @@ function onDrop(e) {
   e.currentTarget.classList.remove('drag-over');
   const targetConfId = e.currentTarget.dataset.confId;
   if (!draggedTeamId || !targetConfId || targetConfId === dragSourceConfId) return;
-  pushHistory();
-  state.conferences[dragSourceConfId] = (state.conferences[dragSourceConfId] || []).filter(id => id !== draggedTeamId);
-  if (!state.conferences[targetConfId]) state.conferences[targetConfId] = [];
-  state.conferences[targetConfId].push(draggedTeamId);
+  moveTeam(draggedTeamId, dragSourceConfId, targetConfId);
   draggedTeamId = dragSourceConfId = null;
+}
+
+function moveTeam(teamId, fromConf, toConf) {
+  if (!teamId || !toConf || toConf === fromConf) return;
+  pushHistory();
+  state.conferences[fromConf] = (state.conferences[fromConf] || []).filter(id => id !== teamId);
+  if (!state.conferences[toConf]) state.conferences[toConf] = [];
+  state.conferences[toConf].push(teamId);
   scheduleAnalytics();
   scheduleHashUpdate();
   renderMain();
 }
 
+// ─── TOUCH DRAG ──────────────────────────────────────────────────────────────
+
+let _touchGhost    = null;
+let _touchOffsetX  = 0;
+let _touchOffsetY  = 0;
+let _touchHoverCol = null;
+
+function onTouchStart(e) {
+  const card = e.currentTarget;
+  draggedTeamId    = card.dataset.teamId;
+  dragSourceConfId = card.dataset.confId;
+
+  const touch  = e.touches[0];
+  const rect   = card.getBoundingClientRect();
+  _touchOffsetX = touch.clientX - rect.left;
+  _touchOffsetY = touch.clientY - rect.top;
+
+  // Build ghost
+  _touchGhost = card.cloneNode(true);
+  _touchGhost.style.cssText = `
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.85;
+    width: ${rect.width}px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    left: ${touch.clientX - _touchOffsetX}px;
+    top:  ${touch.clientY - _touchOffsetY}px;
+    transform: scale(1.04);
+    transition: none;
+  `;
+  document.body.appendChild(_touchGhost);
+  card.classList.add('dragging');
+  e.preventDefault();
+}
+
+function onTouchMove(e) {
+  if (!_touchGhost) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+
+  _touchGhost.style.left = `${touch.clientX - _touchOffsetX}px`;
+  _touchGhost.style.top  = `${touch.clientY - _touchOffsetY}px`;
+
+  // Find droptarget under finger
+  _touchGhost.style.display = 'none';
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  _touchGhost.style.display = '';
+
+  const dropTarget = el?.closest('.droptarget');
+
+  if (_touchHoverCol && _touchHoverCol !== dropTarget) {
+    _touchHoverCol.classList.remove('drag-over');
+  }
+  if (dropTarget) {
+    dropTarget.classList.add('drag-over');
+    _touchHoverCol = dropTarget;
+  } else {
+    _touchHoverCol = null;
+  }
+}
+
+function onTouchEnd(e) {
+  if (!_touchGhost) return;
+  e.preventDefault();
+
+  const touch = e.changedTouches[0];
+
+  // Clean up ghost
+  _touchGhost.remove();
+  _touchGhost = null;
+  document.querySelectorAll('.team-card.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.droptarget').forEach(el => el.classList.remove('drag-over'));
+
+  // Find drop target
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  const dropTarget = el?.closest('.droptarget');
+  const targetConfId = dropTarget?.dataset.confId;
+
+  if (targetConfId) {
+    moveTeam(draggedTeamId, dragSourceConfId, targetConfId);
+  }
+  draggedTeamId = dragSourceConfId = null;
+  _touchHoverCol = null;
+}
+
 // ─── CONFERENCE MANAGEMENT ───────────────────────────────────────────────────
 
-function handleAddConference() {
-  const name = window.prompt('New conference name:');
+async function handleAddConference() {
+  const name = await mPrompt('New conference name:', '', 'e.g. Mega East');
   if (!name?.trim()) return;
   const id = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  if (!id || state.conferences[id] !== undefined) {
-    if (state.conferences[id] !== undefined) alert(`"${id}" already exists.`);
-    return;
+  if (!id) return;
+  if (state.conferences[id] !== undefined) {
+    await mAlert(`"${id}" already exists.`); return;
   }
   pushHistory();
   state.conferences[id] = [];
@@ -756,24 +920,25 @@ function handleAddConference() {
   scheduleHashUpdate();
 }
 
-function handleDeleteConference(confId) {
+async function handleDeleteConference(confId) {
   const teams = state.conferences[confId] || [];
-  if (teams.length > 0) { alert(`Move all ${teams.length} team(s) out first.`); return; }
-  if (!confirm(`Remove "${confId}"?`)) return;
+  if (teams.length > 0) { await mAlert(`Move all ${teams.length} team(s) out first.`); return; }
+  const ok = await mConfirm(`Remove "${confId}"?`, true);
+  if (!ok) return;
   pushHistory();
   delete state.conferences[confId];
   renderMain();
   scheduleHashUpdate();
 }
 
-function handleRenameConference(confId) {
+async function handleRenameConference(confId) {
   const current = confDisplayName(confId);
-  const newName = window.prompt(`Rename "${current}" to:`, current);
+  const newName = await mPrompt(`Rename conference:`, current, current);
   if (!newName?.trim() || newName.trim() === current) return;
   const newId = newName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   if (!newId) return;
   if (newId !== confId && state.conferences[newId] !== undefined) {
-    alert(`"${newId}" already exists.`); return;
+    await mAlert(`"${newId}" already exists.`); return;
   }
   if (newId === confId) return;
   pushHistory();
@@ -932,8 +1097,9 @@ function afterHistoryChange() {
 
 // ─── RESET ───────────────────────────────────────────────────────────────────
 
-function handleReset() {
-  if (!confirm('Reset to default 2026 alignment? This clears undo history.')) return;
+async function handleReset() {
+  const ok = await mConfirm('Reset to default 2026 alignment? This clears undo history.', false);
+  if (!ok) return;
   history.past = []; history.future = [];
   const defaultConf = {};
   ALL_CONFERENCES.forEach(c => (defaultConf[c.id] = []));
@@ -950,7 +1116,7 @@ function handleReset() {
 async function handleExport() {
   const url = window.location.href.split('#')[0] + encodeHash(state.conferences);
   try { await navigator.clipboard.writeText(url); showToast('Share URL copied!'); }
-  catch { window.prompt('Copy URL:', url); }
+  catch { await showModal({ title: 'Copy Share URL', input: true, inputDefault: url, confirmLabel: 'Done' }); }
 
   const canvas = generateExportCanvas();
   const a = document.createElement('a');

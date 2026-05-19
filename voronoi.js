@@ -129,6 +129,15 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
 
   points.forEach((pt) => {
     const color = conferenceColors[pt.confId] || '#888888';
+    // Invisible large hit area for fat-finger tapping
+    const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    hitArea.setAttribute('cx', pt.x);
+    hitArea.setAttribute('cy', pt.y);
+    hitArea.setAttribute('r', '22');
+    hitArea.setAttribute('fill', 'transparent');
+    hitArea.style.cursor = 'pointer';
+    dotsGroup.appendChild(hitArea);
+
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', pt.x);
     circle.setAttribute('cy', pt.y);
@@ -156,24 +165,18 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
       dotsGroup.appendChild(ring);
     }
 
-    // Hover events
-    circle.addEventListener('mouseenter', (e) => {
+    const handleEnter = (e) => {
       if (_selectedTeamId !== pt.team.id) circle.setAttribute('r', '9');
       const confName = getConfName(pt.confId);
       tooltip.innerHTML = `<strong>${pt.team.name}</strong><br/>${pt.team.city}, ${pt.team.state}<br/><em>${confName}</em>`;
       tooltip.style.display = 'block';
       positionTooltip(e, tooltip, mapContainer);
-    });
-    circle.addEventListener('mousemove', (e) => {
-      positionTooltip(e, tooltip, mapContainer);
-    });
-    circle.addEventListener('mouseleave', () => {
+    };
+    const handleLeave = () => {
       if (_selectedTeamId !== pt.team.id) circle.setAttribute('r', '7');
       tooltip.style.display = 'none';
-    });
-
-    // Click — fire teamDotClick custom event
-    circle.addEventListener('click', (e) => {
+    };
+    const handleClick = (e) => {
       e.stopPropagation();
       tooltip.style.display = 'none';
       _selectedTeamId = (_selectedTeamId === pt.team.id) ? null : pt.team.id;
@@ -183,7 +186,18 @@ export function renderVoronoi(teams, conferenceColors, leafletMap, state) {
         mapContainer.dispatchEvent(new CustomEvent('mapBackgroundClick', { bubbles: true }));
       }
       renderVoronoi(teams, conferenceColors, leafletMap, state);
-    });
+    };
+
+    circle.addEventListener('mouseenter', handleEnter);
+    circle.addEventListener('mousemove', (e) => positionTooltip(e, tooltip, mapContainer));
+    circle.addEventListener('mouseleave', handleLeave);
+    circle.addEventListener('click', handleClick);
+
+    // Forward hit area events to circle handlers (for mobile tap accuracy)
+    hitArea.addEventListener('mouseenter', handleEnter);
+    hitArea.addEventListener('mousemove', (e) => positionTooltip(e, tooltip, mapContainer));
+    hitArea.addEventListener('mouseleave', handleLeave);
+    hitArea.addEventListener('click', handleClick);
 
     dotsGroup.appendChild(circle);
 

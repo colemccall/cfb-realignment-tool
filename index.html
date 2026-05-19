@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Conference Realignment Simulator</title>
 
   <!-- Google Fonts -->
@@ -60,6 +60,7 @@
       cursor: pointer;
       white-space: nowrap;
       transition: background 0.15s;
+      touch-action: manipulation; /* prevent double-tap zoom on iOS */
     }
     .btn-action:hover { background: rgba(255,255,255,0.22); }
     .btn-action--primary { background: rgba(255,255,255,0.18); }
@@ -458,6 +459,7 @@
       padding: 8px 9px;
       cursor: grab;
       user-select: none;
+      touch-action: none;
       transition: box-shadow 0.1s, opacity 0.1s, border-color 0.1s;
     }
     .team-card:hover {
@@ -705,22 +707,80 @@
 
     /* ── RESPONSIVE ── */
     @media (max-width: 700px) {
+      /* ── Shell ── */
       #app { height: 100dvh; overflow: hidden; }
       #app-body { flex-direction: column; overflow: hidden; }
-      #analytics-sidebar { display: none; }
-      #main-content { overflow: auto; }
-      #leaflet-map { position: static !important; height: 60dvh !important; }
-      .conf-board { flex-direction: column; min-width: unset; padding: 10px; gap: 8px; }
-      .conf-column { width: 100%; }
-      .bs-header-top { flex-wrap: wrap; gap: 6px; }
+      #main-content { overflow: auto; -webkit-overflow-scrolling: touch; }
+
+      /* ── Header: collapse tagline, tighten buttons ── */
+      .bs-logo-sub { display: none; }
+      .bs-logo { font-size: 18px !important; }
+      .bs-header-top { flex-wrap: wrap; gap: 4px; padding: 8px 12px 6px; }
       .header-actions { flex-wrap: wrap; gap: 4px; }
+      .btn-action { padding: 6px 10px; font-size: 12px; }
       .ad-leaderboard { display: none; }
-      .team-card { padding: 6px 8px; }
-      .team-logo { width: 22px; height: 22px; }
-      .team-logo-wrap { width: 22px; height: 22px; }
-      .timeline-wrap { display: none; }
-      #school-card-panel { left: 10px; right: 10px; width: auto; }
+
+      /* ── Timeline: keep but shrink ── */
+      .timeline-wrap { padding: 4px 12px 6px; }
+      .timeline-slider { height: 20px; }
+      .timeline-label { font-size: 11px; }
+
+      /* ── Conference board: full-width stacked columns ── */
+      .conf-board { flex-direction: column; min-width: unset; padding: 8px; gap: 8px; }
+      .conf-column { width: 100%; }
+      /* Touch-friendly card sizing */
+      .team-card { padding: 9px 10px; min-height: 44px; touch-action: none; }
+      .team-logo { width: 24px; height: 24px; }
+      .team-logo-wrap { width: 24px; height: 24px; }
+
+      /* ── Map tab ── */
+      #leaflet-map { position: static !important; height: 55dvh !important; }
+      #school-card-panel { left: 8px; right: 8px; bottom: 8px; width: auto; }
+
+      /* ── Analytics: slide-up panel instead of sidebar ── */
+      #analytics-sidebar {
+        display: block;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: auto;
+        max-height: 55dvh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        background: var(--bg);
+        border-top: 2px solid var(--border-mid);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+        z-index: 800;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      #analytics-sidebar.mobile-open {
+        transform: translateY(0);
+      }
+      /* Pull handle */
+      #analytics-sidebar::before {
+        content: '';
+        display: block;
+        width: 36px; height: 4px;
+        background: var(--border-mid);
+        border-radius: 2px;
+        margin: 10px auto 4px;
+      }
+      /* Floating analytics toggle button */
+      #btn-analytics-toggle {
+        display: flex;
+      }
+
+      /* Dropdowns open upward on mobile */
+      .presets-dropdown, .scenarios-dropdown {
+        bottom: calc(100% + 4px);
+        top: auto;
+      }
     }
+
+    /* Analytics toggle button — hidden on desktop */
+    #btn-analytics-toggle { display: none; }
   </style>
 </head>
 <body class="app-realignment">
