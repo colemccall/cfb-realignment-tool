@@ -1,22 +1,17 @@
 /**
  * presets.js — Conference Realignment Simulator
  *
- * Five presets spanning 30+ years of CFB realignment history.
- * Conference memberships are historically accurate for the labeled era.
- * FBS transition notes: App State/Troy/Sun Belt schools joined FBS 2005-2012;
- * Charlotte/Old Dominion/Georgia State joined FBS 2013-2016;
- * James Madison joined FBS 2022; Sam Houston/Jacksonville State/Kennesaw State
- * joined FBS 2022-2023.
+ * Five historically verified snapshots of FBS conference alignment.
+ * Sources: SI realignment history, Wikipedia conference pages, NCAA records.
+ *
+ * buildFromSpec(spec, eraYear):
+ *   - Teams in spec are placed as listed (first occurrence wins).
+ *   - Unlisted teams fall back to their teams.json default conference.
+ *   - If eraYear set, unlisted teams with fbs_since > eraYear go to 'fcs' column.
  */
 
 export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
 
-  /**
-   * Build a full conference map from a spec.
-   * Teams listed in spec are placed as specified.
-   * Teams NOT listed fall through to their teams.json default.
-   * First occurrence wins if a team appears in multiple spec arrays.
-   */
   function buildFromSpec(spec, eraYear = null) {
     const m = {};
     ALL_CONFERENCES.forEach(c => (m[c.id] = []));
@@ -52,24 +47,26 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
     // ═══════════════════════════════════════════════════════════════════════
     // 1 · 2026 — NEW PAC-12
     //
-    // The Pac-12 brand revived: Oregon State and Washington State anchor the
-    // new conference with schools from the Mountain West. Membership announced
-    // late 2024: OSU, WSU + Boise State, Colorado State, Fresno State, Utah
-    // State, San Diego State, Nevada, Nevada Las Vegas, and Wyoming.
-    // The rump MWC continues with Air Force, New Mexico, San Jose State, Hawaii.
-    // Big Ten (18), SEC (16), Big 12 (16), ACC (17) all unchanged from 2024.
+    // The Pac-12 brand revived July 1, 2026. Oregon State and Washington State
+    // anchor the conference alongside 8 Mountain West defectors: Boise State,
+    // Colorado State, Fresno State, San Diego State, Utah State, UNLV, Nevada,
+    // Wyoming. Texas State also joins from the Sun Belt.
+    // Remaining MWC: Air Force, New Mexico, San Jose State, Hawaii, UTEP.
+    // Big Ten 18, SEC 16, Big 12 16, ACC 17 all unchanged from 2024.
+    // Temple remains independent after AAC expulsion in 2024.
     // ═══════════════════════════════════════════════════════════════════════
     {
       id: 'new-pac-12-2026',
       name: '2026 — New Pac-12',
-      description: 'Pac-12 reborn with OSU, WSU + 8 Mountain West defectors. Big Ten 18, SEC 16, ACC 17 intact.',
+      description: 'Pac-12 reborn with OSU, WSU + 8 MWC defectors + Texas State. Big Ten 18, SEC 16, ACC 17 intact.',
       getConferences: () => buildFromSpec({
         'pac-12': [
           'oregon-state', 'washington-state',
           'boise-state', 'colorado-state', 'fresno-state', 'utah-state',
-          'san-diego-state', 'unlv', 'nevada', 'wyoming',
+          'san-diego-state', 'unlv', 'nevada', 'wyoming', 'texas-state',
         ],
-        'mountain-west': ['air-force', 'new-mexico', 'san-jose-state', 'hawaii'],
+        // MWC remnant: 5 schools remain after losing 7 to Pac-12 + UTEP joins from CUSA
+        'mountain-west': ['air-force', 'new-mexico', 'san-jose-state', 'hawaii', 'utep'],
         'big-ten': [
           'ohio-state', 'michigan', 'penn-state', 'michigan-state', 'wisconsin',
           'iowa', 'minnesota', 'nebraska', 'illinois', 'purdue', 'indiana',
@@ -83,9 +80,9 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'texas', 'oklahoma',
         ],
         'big-12': [
-          'texas-tech', 'tcu', 'baylor', 'oklahoma-state', 'kansas', 'kansas-state',
-          'west-virginia', 'iowa-state', 'cincinnati', 'houston', 'ucf', 'byu',
-          'colorado', 'arizona', 'arizona-state', 'utah',
+          'baylor', 'byu', 'cincinnati', 'houston', 'iowa-state', 'kansas',
+          'kansas-state', 'oklahoma-state', 'tcu', 'texas-tech', 'ucf',
+          'west-virginia', 'arizona', 'arizona-state', 'colorado', 'utah',
         ],
         'acc': [
           'clemson', 'florida-state', 'miami', 'louisville', 'nc-state',
@@ -93,6 +90,11 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'boston-college', 'pitt', 'syracuse', 'georgia-tech',
           'stanford', 'california', 'smu',
         ],
+        'aac': [
+          'memphis', 'tulane', 'tulsa', 'navy', 'army', 'east-carolina',
+          'usf', 'charlotte', 'north-texas', 'uab', 'rice', 'utsa', 'florida-atlantic',
+        ],
+        'independent': ['notre-dame', 'uconn', 'new-mexico-state', 'temple'],
       }),
     },
 
@@ -100,15 +102,16 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
     // 2 · 2024-25 — FALL OF THE PAC-12
     //
     // The great implosion. Oregon, USC, UCLA, Washington join Big Ten (18).
-    // Texas and Oklahoma finally arrive in the SEC (16). Colorado, Arizona,
-    // Arizona State, Utah bolt to Big 12 (16). Stanford, Cal, SMU join ACC (17).
-    // Oregon State and Washington State are left holding an empty Pac-12 shell,
-    // operating as a two-team conference while negotiating a future.
+    // Texas and Oklahoma arrive in SEC (16). Colorado, Arizona, Arizona State,
+    // Utah join Big 12 (16). Stanford, Cal, SMU join ACC (17). Cincy, Houston,
+    // UCF, BYU join Big 12 (2023). Oregon State and Washington State left as
+    // Pac-12 shell. Temple expelled from AAC (2024) → independent.
+    // Army joins AAC as football-only member (2024). Liberty joins CUSA (2023).
     // ═══════════════════════════════════════════════════════════════════════
     {
       id: 'chaos-2024',
       name: '2024-25 — Fall of the Pac-12',
-      description: 'Pac-12 gutted to OSU + WSU. Big Ten 18, SEC 16, Big 12 16, ACC 17 take shape.',
+      description: 'Pac-12 down to 2. Big Ten 18, SEC 16, Big 12 16, ACC 17. Temple expelled. Army joins AAC.',
       getConferences: () => buildFromSpec({
         'pac-12': ['oregon-state', 'washington-state'],
         'big-ten': [
@@ -124,9 +127,9 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'texas', 'oklahoma',
         ],
         'big-12': [
-          'texas-tech', 'tcu', 'baylor', 'oklahoma-state', 'kansas', 'kansas-state',
-          'west-virginia', 'iowa-state', 'cincinnati', 'houston', 'ucf', 'byu',
-          'colorado', 'arizona', 'arizona-state', 'utah',
+          'baylor', 'byu', 'cincinnati', 'houston', 'iowa-state', 'kansas',
+          'kansas-state', 'oklahoma-state', 'tcu', 'texas-tech', 'ucf',
+          'west-virginia', 'arizona', 'arizona-state', 'colorado', 'utah',
         ],
         'acc': [
           'clemson', 'florida-state', 'miami', 'louisville', 'nc-state',
@@ -135,36 +138,50 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'stanford', 'california', 'smu',
         ],
         'mountain-west': [
-          'boise-state', 'fresno-state', 'utah-state', 'unlv', 'colorado-state',
-          'air-force', 'san-diego-state', 'nevada', 'new-mexico', 'wyoming',
-          'san-jose-state', 'hawaii',
+          'air-force', 'boise-state', 'colorado-state', 'fresno-state', 'hawaii',
+          'nevada', 'new-mexico', 'san-diego-state', 'san-jose-state', 'unlv',
+          'utah-state', 'wyoming',
         ],
-        'independent': ['notre-dame', 'liberty', 'uconn', 'new-mexico-state', 'temple'],
-        // AAC (post-Big 12 raid) — lost Cincy/Houston/UCF/BYU in 2023; Temple expelled 2024
+        // AAC 2024: Army joins; Temple out; Big 12 raiders gone since 2023
         'aac': [
           'memphis', 'tulane', 'tulsa', 'navy', 'army', 'east-carolina',
           'usf', 'charlotte', 'north-texas', 'uab', 'rice', 'utsa', 'florida-atlantic',
         ],
+        // CUSA 2024: Liberty, Jacksonville State, Sam Houston, Kennesaw State in
+        'cusa': [
+          'fiu', 'jacksonville-state', 'kennesaw-state', 'liberty',
+          'louisiana-tech', 'middle-tennessee', 'new-mexico-state',
+          'sam-houston', 'utep', 'western-kentucky',
+        ],
+        'sun-belt': [
+          'app-state', 'arkansas-state', 'coastal-carolina', 'georgia-southern',
+          'georgia-state', 'james-madison', 'louisiana', 'louisiana-monroe',
+          'marshall', 'old-dominion', 'south-alabama', 'southern-miss',
+          'texas-state', 'troy',
+        ],
+        'mac': [
+          'akron', 'ball-state', 'bowling-green', 'buffalo', 'central-michigan',
+          'eastern-michigan', 'kent-state', 'miami-oh', 'northern-illinois',
+          'ohio', 'toledo', 'western-michigan',
+        ],
+        'independent': ['notre-dame', 'uconn', 'new-mexico-state', 'temple'],
       }),
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 3 · 2012–2023 — THE MODERN ERA
+    // 3 · 2014-2022 — THE MODERN ERA
     //
-    // The post-first-wave "stability" period. The 2010–2012 wave moved Nebraska
-    // and Penn State-era Maryland/Rutgers to Big Ten (14 by 2014). Missouri and
-    // Texas A&M bolted to the SEC (14 by 2012). Colorado and Utah escaped to
-    // Pac-12 (12). The Big 12 shrank to 10 and held. Texas and Oklahoma stayed.
-    // The ACC raided the Big East in 2013: Pitt, Syracuse (2013), Louisville (2014).
-    // The Big East collapsed entirely in 2013, spawning the AAC.
-    // Cincinnati, Houston, UCF join Big 12 in 2023. BYU goes independent in 2011,
-    // then joins Big 12 in 2023 along with UCF, Cincinnati, Houston.
-    // For clarity this represents 2014–2022.
+    // Post-first-wave stability. Nebraska/Colorado left Big 12 for B1G/Pac-12
+    // in 2011. Missouri and Texas A&M joined SEC in 2012 (SEC → 14). Maryland
+    // and Rutgers joined Big Ten in 2014 (B1G → 14). Pac-12 at 12 (Utah/Colorado
+    // joined 2011). Big 12 at 10 (Texas and Oklahoma still there). ACC at 14
+    // (Pitt/Syracuse 2013, Louisville 2014). Big East collapsed → spawned AAC.
+    // BYU went independent 2011. Army joined AAC 2016. UConn left AAC 2020.
     // ═══════════════════════════════════════════════════════════════════════
     {
       id: 'modern-era-2014',
       name: '2014–2022 — The Modern Era',
-      description: 'The long stable stretch: Pac-12 at 12, Big 12 at 10 (TX+OU still there), SEC/Big Ten at 14, ACC at 14.',
+      description: 'Pac-12 at 12, Big 12 at 10 (TX+OU still in), SEC/Big Ten at 14, ACC at 14.',
       getConferences: () => buildFromSpec({
         'sec': [
           'alabama', 'auburn', 'georgia', 'florida', 'tennessee', 'lsu',
@@ -189,123 +206,118 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'north-carolina', 'duke', 'wake-forest', 'virginia', 'virginia-tech',
           'boston-college', 'pitt', 'syracuse', 'georgia-tech',
         ],
-        // AAC (rebranded from Big East 2013): football-only remnant
+        // AAC 2014: rebranded from Big East; Cincy/Houston/UCF/SMU/Temple/Tulane/Tulsa/Navy/ECU/USF
+        // Army joined AAC 2016; UConn was member through 2019
         'aac': [
           'memphis', 'tulane', 'tulsa', 'navy', 'east-carolina', 'temple',
-          'usf', 'cincinnati', 'houston', 'ucf', 'smu',
-          'army', 'uconn', // Army joined AAC 2016, UConn left 2020 but was member
+          'usf', 'cincinnati', 'houston', 'ucf', 'smu', 'uconn',
         ],
         'mountain-west': [
-          'boise-state', 'fresno-state', 'utah-state', 'unlv', 'colorado-state',
-          'air-force', 'san-diego-state', 'nevada', 'new-mexico', 'wyoming',
-          'san-jose-state', 'hawaii',
+          'air-force', 'boise-state', 'colorado-state', 'fresno-state', 'hawaii',
+          'nevada', 'new-mexico', 'san-diego-state', 'san-jose-state', 'unlv',
+          'utah-state', 'wyoming',
         ],
-        // Sun Belt fully FBS by this era
-        'sun-belt': [
-          'app-state', 'georgia-southern', 'georgia-state', 'louisiana',
-          'louisiana-monroe', 'south-alabama', 'arkansas-state', 'troy',
-          'texas-state',
-        ],
-        // CUSA in this era
+        // CUSA 2014 — 13 members
         'cusa': [
-          'marshall', 'old-dominion', 'southern-miss', 'utep', 'louisiana-tech',
-          'middle-tennessee', 'western-kentucky', 'fiu', 'florida-atlantic',
-          'rice', 'utsa', 'north-texas', 'uab', 'charlotte',
+          'florida-atlantic', 'fiu', 'marshall', 'middle-tennessee', 'old-dominion',
+          'uab', 'western-kentucky', 'louisiana-tech', 'north-texas', 'rice',
+          'southern-miss', 'utep', 'utsa',
         ],
-        'independent': ['notre-dame', 'byu', 'liberty', 'new-mexico-state'],
+        // Sun Belt 2014 — App State/Georgia Southern first FBS year
+        'sun-belt': [
+          'app-state', 'arkansas-state', 'georgia-southern', 'georgia-state',
+          'louisiana', 'louisiana-monroe', 'south-alabama', 'troy', 'texas-state',
+          'new-mexico-state',
+        ],
+        'mac': [
+          'akron', 'ball-state', 'bowling-green', 'buffalo', 'central-michigan',
+          'eastern-michigan', 'kent-state', 'miami-oh', 'northern-illinois',
+          'ohio', 'toledo', 'western-michigan',
+        ],
+        'independent': ['notre-dame', 'byu', 'army', 'navy', 'liberty'],
       }, 2014),
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 4 · 2003–2011 — BIG EAST ERA
+    // 4 · 2003 — BIG EAST ERA
     //
-    // The Big East in its power-conference prime. Miami, VT, and BC were members
-    // before the ACC raided the conference in 2004-05. The Big 12 had all 12.
-    // Big Ten had only 11 (Penn State, no Nebraska/Maryland/Rutgers). SEC at 12
-    // (no Missouri/Texas A&M). Pac-10 at 10 (no Utah/Colorado/Oregon additions).
-    // ACC had 9 original members + FSU (1992) before raiding Big East in 2004.
-    // Miami/VT joined ACC in 2004, BC in 2005. This snapshot is ~2003 pre-raid.
-    // WAC: Boise State (1996–2011), Hawaii, Fresno State, Utah State, Nevada,
-    // San Jose State, Louisiana Tech. MWC formed 1999: BYU, Utah, Air Force,
-    // Colorado State, UNLV, Wyoming, New Mexico, San Diego State, TCU (2005).
+    // The Big East at peak power: Miami, VT, BC still football members (leave
+    // for ACC after 2003 season). Louisville was in CUSA football, not Big East.
+    // Big 12 full 12. Big Ten 11 (Penn State joined 1993). SEC 12. Pac-10 at 10.
+    // ACC 9 (pre-raid). MWC founded 1999 with 8 teams. WAC had 10 teams after
+    // MWC split. CUSA had 10. Sun Belt FBS since 2001 with 6 teams (Idaho not in DB).
+    // FAU and FIU were FBS independents (joined Sun Belt 2005).
+    // UCF was in the MAC 2002-2004 before moving to CUSA.
+    // Army was in CUSA 1999–2004.
     // ═══════════════════════════════════════════════════════════════════════
     {
       id: 'big-east-era-2003',
       name: '2003 — Big East Era',
-      description: 'Big East as a Power conference with Miami, VT & BC. Old Big 12 at 12. Pac-10 at 10. Boise State in WAC.',
+      description: 'Big East at peak with Miami, VT & BC. Big 12 full 12. Pac-10 at 10. Boise State in WAC.',
       getConferences: () => buildFromSpec({
-        // Big East football 2003: Miami/VT/BC leave after season; Louisville was in CUSA
+        // Big East football 2003 (10 teams; Louisville was in CUSA, not Big East)
         'big-east': [
-          'miami', 'virginia-tech', 'boston-college',
-          'pitt', 'syracuse', 'west-virginia', 'rutgers',
-          'temple', 'uconn', 'cincinnati',
+          'miami', 'virginia-tech', 'boston-college', 'pitt', 'syracuse',
+          'west-virginia', 'rutgers', 'temple', 'uconn', 'cincinnati',
         ],
-        // Big 12 full 12: North (Nebraska, Colorado, Missouri, Kansas, K-State, Iowa State)
-        //                  South (Texas, Oklahoma, Texas A&M, Oklahoma State, Texas Tech, Baylor)
+        // Big 12 — all 12 members still intact
         'big-12': [
-          'nebraska', 'colorado', 'missouri', 'kansas', 'kansas-state', 'iowa-state',
+          'colorado', 'iowa-state', 'kansas', 'kansas-state', 'missouri', 'nebraska',
           'texas', 'oklahoma', 'texas-am', 'oklahoma-state', 'texas-tech', 'baylor',
         ],
-        // Big Ten 11 (Penn State joined 1993; no Nebraska/Maryland/Rutgers yet)
+        // Big Ten 11 (Penn State joined 1993; no Maryland/Rutgers/Nebraska yet)
         'big-ten': [
           'ohio-state', 'michigan', 'penn-state', 'michigan-state', 'wisconsin',
           'iowa', 'minnesota', 'illinois', 'purdue', 'indiana', 'northwestern',
         ],
-        // SEC 12 (Arkansas + South Carolina joined 1992; no Missouri/Texas A&M)
+        // SEC 12 (Missouri and Texas A&M join in 2012)
         'sec': [
           'alabama', 'auburn', 'georgia', 'florida', 'tennessee', 'lsu',
-          'ole-miss', 'mississippi-state', 'arkansas', 'south-carolina', 'vanderbilt', 'kentucky',
+          'ole-miss', 'mississippi-state', 'arkansas', 'south-carolina',
+          'vanderbilt', 'kentucky',
         ],
-        // Pac-10: original 8 + Arizona/ASU (1978) + no Utah/Colorado yet
+        // Pac-10 (Colorado/Utah join in 2011)
         'pac-12': [
-          'usc', 'ucla', 'stanford', 'california', 'oregon', 'oregon-state',
-          'washington', 'washington-state', 'arizona', 'arizona-state',
+          'usc', 'ucla', 'washington', 'washington-state', 'oregon', 'oregon-state',
+          'california', 'stanford', 'arizona', 'arizona-state',
         ],
-        // ACC 9 pre-Miami/VT/BC raid: FSU + original 8 (Clemson, Duke, Georgia Tech, Maryland,
-        // NC State, North Carolina, Virginia, Wake Forest)
+        // ACC 9 (Miami and VT join for 2004; BC for 2005)
         'acc': [
           'florida-state', 'clemson', 'duke', 'georgia-tech', 'maryland',
           'nc-state', 'north-carolina', 'virginia', 'wake-forest',
         ],
-        // Mountain West (formed 1999 — split from WAC):
-        // BYU, Utah, Colorado State, Air Force, UNLV, Wyoming, New Mexico, San Diego State
-        // Fresno State joined MWC 2012; was in WAC during this era
+        // MWC — 8 founding members (TCU joins 2005; Utah leaves 2011)
         'mountain-west': [
-          'byu', 'utah', 'colorado-state', 'air-force', 'unlv', 'wyoming',
-          'new-mexico', 'san-diego-state',
+          'air-force', 'byu', 'colorado-state', 'new-mexico',
+          'san-diego-state', 'unlv', 'utah', 'wyoming',
         ],
-        // WAC (Western Athletic Conference) in this era
+        // WAC 2003 — 10 teams after MWC split (Boise State, Nevada, San Jose State, etc.)
+        // Using 'aac' conf slot to display as "WAC"
         'aac': [
-          'boise-state', 'fresno-state', 'nevada', 'san-jose-state', 'hawaii',
-          'utah-state', 'louisiana-tech',
-          // CUSA schools (approximate)
-          'memphis', 'tulane', 'tulsa', 'east-carolina', 'usf',
-          'southern-miss', 'marshall', 'utep',
-          // TCU was in CUSA 2001-2005 before jumping to MWC
-          'tcu', 'smu', 'rice', 'houston',
+          'boise-state', 'fresno-state', 'hawaii', 'louisiana-tech',
+          'nevada', 'san-jose-state', 'utah-state', 'tulsa',
         ],
-        // MAC unchanged
+        // MAC 2003 — Marshall (joined 1997), Buffalo (joined 1999), UCF (2002–2004)
         'mac': [
-          'ohio', 'miami-oh', 'bowling-green', 'ball-state', 'buffalo', 'akron',
-          'kent-state', 'western-michigan', 'central-michigan', 'eastern-michigan',
-          'northern-illinois', 'toledo',
+          'akron', 'ball-state', 'bowling-green', 'buffalo', 'central-michigan',
+          'eastern-michigan', 'kent-state', 'marshall', 'miami-oh', 'northern-illinois',
+          'ohio', 'toledo', 'ucf', 'western-michigan',
         ],
-        // Sun Belt 2003 — only schools actually FBS and in Sun Belt
-        // FAU was independent (joined Sun Belt 2005); FIU was independent (joined Sun Belt 2005)
-        'sun-belt': [
-          'louisiana', 'louisiana-monroe', 'arkansas-state', 'troy',
-          'north-texas', 'middle-tennessee',
-        ],
-        // CUSA 2003 actual members
+        // CUSA 2003 — 10 teams (Cincinnati in Big East; Houston/SMU/Rice listed here)
+        // Louisville was CUSA football through 2004; TCU left for MWC 2001
         'cusa': [
-          'uab', 'southern-miss', 'utep', 'rice', 'memphis', 'tulane', 'houston', 'smu',
-          'louisville', // Louisville was in CUSA for football through 2004
+          'east-carolina', 'houston', 'louisville', 'memphis',
+          'rice', 'smu', 'southern-miss', 'tulane', 'uab', 'army',
         ],
-        // FBS independents 2003
+        // Sun Belt 2003 — FBS since 2001; Idaho (not in DB) was also a member
+        'sun-belt': [
+          'arkansas-state', 'louisiana', 'louisiana-monroe',
+          'middle-tennessee', 'north-texas', 'troy', 'new-mexico-state',
+        ],
+        // FBS Independents 2003
+        // FAU (FBS 2001) and FIU (FBS 2002) joined Sun Belt in 2005
         'independent': [
-          'notre-dame', 'army', 'navy', 'new-mexico-state',
-          'florida-atlantic', // FBS 2001, joined Sun Belt 2005
-          'fiu',              // FBS 2002, joined Sun Belt 2005
+          'notre-dame', 'navy', 'florida-atlantic', 'fiu',
         ],
       }, 2003),
     },
@@ -313,89 +325,86 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
     // ═══════════════════════════════════════════════════════════════════════
     // 5 · 1992 — BIG 8 + SWC ERA
     //
-    // Before the 1996 merger that created the Big 12. The Big Eight and Southwest
-    // Conference were fierce rivals and separate entities. Arkansas left the SWC
-    // for the SEC in 1991. South Carolina joined the SEC in 1991. The SEC expanded
-    // to 12 in 1992 (adding Arkansas and South Carolina). Penn State joined the
-    // Big Ten in 1993 (so Big Ten had 10 teams in 1992, technically). Florida State
-    // joined the ACC in 1992. Miami was the nation's most dominant program and
-    // was in the Big East. The WAC had 10 teams including Utah/BYU/Air Force.
-    //
-    // Note: Most Sun Belt and G5 schools were FCS (I-AA) in 1992. Only
-    // schools actually at Division I-A (FBS equivalent) in 1992 are shown.
+    // Before the 1996 merger. Arkansas left SWC for SEC in 1991. SEC expanded
+    // to 12 in 1992. Big Ten had 10 teams — Penn State's first season was 1993.
+    // Florida State joined ACC in 1992. Big East football launched 1991.
+    // Louisville was in Big East football as a founding member.
+    // UConn was FCS (I-AA) until 2000 — not in Big East football 1992.
+    // WAC had 10 members in 1992. Utah State was in the Big West, not the WAC.
+    // MAC had 10 members (Buffalo 1999, Akron joined MAC 1992).
+    // CUSA did not exist (founded 1995). Most G5/Sun Belt schools were FCS.
     // ═══════════════════════════════════════════════════════════════════════
     {
       id: 'big-8-swc-1992',
       name: '1992 — Big 8 + SWC Era',
-      description: 'Before the 1996 Big 12 merger. Big Eight vs. SWC. Big East loaded with Miami. SEC just hit 12.',
+      description: 'Before the 1996 Big 12 merger. Big 8 vs SWC. Big East loaded with Miami. SEC just hit 12.',
       getConferences: () => buildFromSpec({
-        // Big Eight — the 8 teams, Oklahoma dominant era
+        // Big Eight — 8 teams
         'big-8': [
-          'oklahoma', 'nebraska', 'colorado', 'missouri',
-          'kansas', 'kansas-state', 'iowa-state', 'oklahoma-state',
+          'colorado', 'iowa-state', 'kansas', 'kansas-state',
+          'missouri', 'nebraska', 'oklahoma', 'oklahoma-state',
         ],
-        // SWC — 8 teams after Arkansas left in 1991
-        // Rice, TCU, SMU, Houston were all struggling members post-death penalty
+        // SWC — 8 teams (Arkansas left in 1991)
         'swc': [
-          'texas', 'texas-am', 'texas-tech', 'baylor',
-          'tcu', 'rice', 'smu', 'houston',
+          'baylor', 'houston', 'rice', 'smu',
+          'tcu', 'texas', 'texas-am', 'texas-tech',
         ],
-        // SEC 12 — just expanded; Arkansas (1991) and South Carolina (1991)
+        // SEC 12 — first year with 12 teams (Arkansas + South Carolina joined 1992)
         'sec': [
-          'alabama', 'auburn', 'georgia', 'florida', 'tennessee', 'lsu',
-          'ole-miss', 'mississippi-state', 'arkansas', 'south-carolina',
-          'vanderbilt', 'kentucky',
+          'alabama', 'arkansas', 'auburn', 'florida', 'georgia', 'kentucky',
+          'lsu', 'mississippi-state', 'ole-miss', 'south-carolina',
+          'tennessee', 'vanderbilt',
         ],
-        // Big Ten 10 in 1992 — Penn State's first season was 1993; they were independent in 1992
+        // Big Ten — 10 teams; Penn State's first season is 1993, so they are independent here
         'big-ten': [
-          'michigan', 'ohio-state', 'michigan-state',
-          'iowa', 'minnesota', 'wisconsin', 'illinois', 'purdue',
-          'indiana', 'northwestern',
+          'illinois', 'indiana', 'iowa', 'michigan', 'michigan-state',
+          'minnesota', 'northwestern', 'ohio-state', 'purdue', 'wisconsin',
         ],
-        // Pac-10 — exactly 10, stable from 1978 until Utah/Colorado in 2011
+        // Pac-10 — exactly 10 (unchanged until Colorado/Utah in 2011)
         'pac-12': [
-          'usc', 'ucla', 'stanford', 'california', 'oregon', 'oregon-state',
-          'washington', 'washington-state', 'arizona', 'arizona-state',
+          'arizona', 'arizona-state', 'california', 'oregon', 'oregon-state',
+          'stanford', 'usc', 'ucla', 'washington', 'washington-state',
         ],
-        // ACC 9 — Florida State joined in 1992 as 9th member
+        // ACC — 9 teams; Florida State's first season
         'acc': [
-          'florida-state', 'clemson', 'georgia-tech', 'maryland',
-          'duke', 'nc-state', 'north-carolina', 'virginia', 'wake-forest',
+          'clemson', 'duke', 'florida-state', 'georgia-tech', 'maryland',
+          'nc-state', 'north-carolina', 'virginia', 'wake-forest',
         ],
-        // Big East football 1992 — UConn was still FCS (I-AA) until 2000
+        // Big East football — 8 founding members (1991); Louisville was a founding member;
+        // UConn was FCS in 1992 and did NOT play Big East football
         'big-east': [
-          'miami', 'virginia-tech', 'west-virginia', 'pitt',
-          'boston-college', 'syracuse', 'rutgers', 'temple',
-          'louisville',
+          'boston-college', 'louisville', 'miami', 'pitt',
+          'rutgers', 'syracuse', 'temple', 'virginia-tech', 'west-virginia',
         ],
-        // WAC 1992 — Utah State was in Big West, not WAC in 1992
+        // WAC — 10 teams in 1992 (Fresno State joined as 10th in 1992)
+        // Air Force was a WAC member. Utah State was in the Big West, not WAC.
+        // Nevada joined WAC in 1992. San Jose State was a member.
         'mountain-west': [
-          'byu', 'utah', 'wyoming', 'air-force', 'colorado-state', 'unlv',
-          'new-mexico', 'san-diego-state', 'hawaii', 'fresno-state',
-          'san-jose-state', 'nevada', 'utep',
+          'air-force', 'byu', 'colorado-state', 'fresno-state', 'hawaii',
+          'nevada', 'new-mexico', 'san-diego-state', 'san-jose-state',
+          'utah', 'utep', 'wyoming',
         ],
-        // MAC — fully FBS in 1992
+        // MAC — 10 teams (Akron joined 1992; Buffalo joins 1999; Marshall joins 1997)
         'mac': [
-          'ohio', 'miami-oh', 'bowling-green', 'ball-state',
-          'kent-state', 'western-michigan', 'central-michigan', 'eastern-michigan',
-          'northern-illinois', 'toledo',
-          // Buffalo joined MAC in 1999; Akron joined MAC in 1992
-          'akron',
+          'akron', 'ball-state', 'bowling-green', 'central-michigan',
+          'eastern-michigan', 'kent-state', 'miami-oh', 'northern-illinois',
+          'ohio', 'toledo', 'western-michigan',
         ],
         // FBS Independents 1992
+        // Penn State: last year as independent (joined Big Ten 1993)
+        // Louisiana Tech: was in Big West Conference (I-A), displayed here
+        // UAB: first I-A season was 1991 as independent
+        // Tulane, Tulsa, East Carolina, Memphis, Southern Miss: I-A independents
+        // Utah State: Big West Conference (I-A); displayed here for simplicity
         'independent': [
-          'notre-dame', 'penn-state', // Penn State's first Big Ten season was 1993
-          'army', 'navy',
-          'tulane', 'tulsa', 'east-carolina',
-          'louisiana-tech', 'uab', 'southern-miss', 'memphis',
-          'utah-state', // was in Big West; treated as misc independent here
+          'army', 'east-carolina', 'louisiana-tech', 'memphis',
+          'navy', 'notre-dame', 'penn-state', 'southern-miss',
+          'tulane', 'tulsa', 'uab', 'utah-state',
         ],
-        // Sun Belt was FCS (I-AA) in 1992 — all three route to FCS via eraYear filter
-        // (fbs_since set on each: louisiana has none so stays here as placeholder)
-        // Louisiana/ULM/Ark State were I-AA Sun Belt; eraYear filter handles them if fbs_since set
+        // Explicit empty buckets for unused conference slots
         'sun-belt': [],
-        // placeholder — no CUSA in 1992
         'cusa': [],
+        'aac': [],
       }, 1992),
     },
 
