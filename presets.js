@@ -139,10 +139,10 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'air-force', 'san-diego-state', 'nevada', 'new-mexico', 'wyoming',
           'san-jose-state', 'hawaii',
         ],
-        'independent': ['notre-dame', 'liberty', 'uconn', 'new-mexico-state'],
-        // AAC (post-Big 12 raid) — lost Cincy/Houston/UCF/BYU in 2023
+        'independent': ['notre-dame', 'liberty', 'uconn', 'new-mexico-state', 'temple'],
+        // AAC (post-Big 12 raid) — lost Cincy/Houston/UCF/BYU in 2023; Temple expelled 2024
         'aac': [
-          'memphis', 'tulane', 'tulsa', 'navy', 'army', 'east-carolina', 'temple',
+          'memphis', 'tulane', 'tulsa', 'navy', 'army', 'east-carolina',
           'usf', 'charlotte', 'north-texas', 'uab', 'rice', 'utsa', 'florida-atlantic',
         ],
       }),
@@ -204,7 +204,7 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
         'sun-belt': [
           'app-state', 'georgia-southern', 'georgia-state', 'louisiana',
           'louisiana-monroe', 'south-alabama', 'arkansas-state', 'troy',
-          'texas-state', 'coastal-carolina',
+          'texas-state',
         ],
         // CUSA in this era
         'cusa': [
@@ -234,11 +234,11 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
       name: '2003 — Big East Era',
       description: 'Big East as a Power conference with Miami, VT & BC. Old Big 12 at 12. Pac-10 at 10. Boise State in WAC.',
       getConferences: () => buildFromSpec({
-        // Big East football (7 original football members + Miami/VT/BC)
+        // Big East football 2003: Miami/VT/BC leave after season; Louisville was in CUSA
         'big-east': [
           'miami', 'virginia-tech', 'boston-college',
           'pitt', 'syracuse', 'west-virginia', 'rutgers',
-          'temple', 'uconn', 'louisville', 'cincinnati',
+          'temple', 'uconn', 'cincinnati',
         ],
         // Big 12 full 12: North (Nebraska, Colorado, Missouri, Kansas, K-State, Iowa State)
         //                  South (Texas, Oklahoma, Texas A&M, Oklahoma State, Texas Tech, Baylor)
@@ -284,26 +284,28 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           // TCU was in CUSA 2001-2005 before jumping to MWC
           'tcu', 'smu', 'rice', 'houston',
         ],
-        // Independents — Notre Dame always; Army/Navy always; some others
-        'independent': [
-          'notre-dame', 'army', 'navy', 'new-mexico-state',
-        ],
         // MAC unchanged
         'mac': [
           'ohio', 'miami-oh', 'bowling-green', 'ball-state', 'buffalo', 'akron',
           'kent-state', 'western-michigan', 'central-michigan', 'eastern-michigan',
           'northern-illinois', 'toledo',
         ],
-        // Sun Belt was FCS or early FBS in 2003 — App State/Georgia Southern were FCS
-        // Only the truly FBS Sun Belt schools of this era
+        // Sun Belt 2003 — only schools actually FBS and in Sun Belt
+        // FAU was independent (joined Sun Belt 2005); FIU was independent (joined Sun Belt 2005)
         'sun-belt': [
           'louisiana', 'louisiana-monroe', 'arkansas-state', 'troy',
-          'north-texas', 'middle-tennessee', // both were in Sun Belt before CUSA
-          'florida-atlantic', // FBS 2002
+          'north-texas', 'middle-tennessee',
         ],
+        // CUSA 2003 actual members
         'cusa': [
-          'uab', 'fiu',
-          'southern-miss', 'utep', 'rice', 'memphis', 'tulane', 'houston', 'smu',
+          'uab', 'southern-miss', 'utep', 'rice', 'memphis', 'tulane', 'houston', 'smu',
+          'louisville', // Louisville was in CUSA for football through 2004
+        ],
+        // FBS independents 2003
+        'independent': [
+          'notre-dame', 'army', 'navy', 'new-mexico-state',
+          'florida-atlantic', // FBS 2001, joined Sun Belt 2005
+          'fiu',              // FBS 2002, joined Sun Belt 2005
         ],
       }, 2003),
     },
@@ -344,10 +346,9 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'ole-miss', 'mississippi-state', 'arkansas', 'south-carolina',
           'vanderbilt', 'kentucky',
         ],
-        // Big Ten 10 in 1992 (Penn State was joining in 1993, often counted as 11)
-        // We'll include Penn State as they played their first Big Ten season in 1993
+        // Big Ten 10 in 1992 — Penn State's first season was 1993; they were independent in 1992
         'big-ten': [
-          'michigan', 'ohio-state', 'michigan-state', 'penn-state',
+          'michigan', 'ohio-state', 'michigan-state',
           'iowa', 'minnesota', 'wisconsin', 'illinois', 'purdue',
           'indiana', 'northwestern',
         ],
@@ -361,20 +362,17 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           'florida-state', 'clemson', 'georgia-tech', 'maryland',
           'duke', 'nc-state', 'north-carolina', 'virginia', 'wake-forest',
         ],
-        // Big East — dominant football conference, Miami + VT + WVU the pillars
-        // Note: Rutgers, Temple, Connecticut were original Big East football members in 1991
+        // Big East football 1992 — UConn was still FCS (I-AA) until 2000
         'big-east': [
           'miami', 'virginia-tech', 'west-virginia', 'pitt',
           'boston-college', 'syracuse', 'rutgers', 'temple',
-          'louisville', 'uconn', // Louisville joined Big East in 1991 for football
+          'louisville',
         ],
-        // WAC (Western Athletic Conference) — 10 members in 1992
-        // BYU, Utah, Wyoming, Air Force, Colorado State, UNLV, New Mexico,
-        // San Diego State, Hawaii, Fresno State, San Jose State (11 by 1992)
+        // WAC 1992 — Utah State was in Big West, not WAC in 1992
         'mountain-west': [
           'byu', 'utah', 'wyoming', 'air-force', 'colorado-state', 'unlv',
           'new-mexico', 'san-diego-state', 'hawaii', 'fresno-state',
-          'san-jose-state', 'nevada', 'utah-state',
+          'san-jose-state', 'nevada', 'utep',
         ],
         // MAC — fully FBS in 1992
         'mac': [
@@ -384,27 +382,20 @@ export function getPresets(ALL_TEAMS, ALL_CONFERENCES) {
           // Buffalo joined MAC in 1999; Akron joined MAC in 1992
           'akron',
         ],
-        // Independents — Notre Dame always; several others in this era
+        // FBS Independents 1992
         'independent': [
-          'notre-dame', 'army', 'navy',
+          'notre-dame', 'penn-state', // Penn State's first Big Ten season was 1993
+          'army', 'navy',
           'tulane', 'tulsa', 'east-carolina',
+          'louisiana-tech', 'uab', 'southern-miss', 'memphis',
+          'utah-state', // was in Big West; treated as misc independent here
         ],
-        // WAC overflow / misc FBS independents of 1992
-        // UTEP was in the WAC; Louisiana Tech was independent/Southland
-        // CUSA did not exist until 1995
-        'aac': [
-          'louisiana-tech', // Independent then Big West
-          'uab',            // Independent FBS program in early 1990s
-        ],
-        // Sun Belt FBS members in 1992 (conference went FBS in 2001;
-        // many were FCS; only show legitimate FBS programs)
-        'sun-belt': [
-          'louisiana', 'louisiana-monroe', 'arkansas-state',
-        ],
-        // CUSA did not exist in 1992, but these schools were FBS independents
-        'cusa': [
-          'southern-miss', 'utep', 'memphis',
-        ],
+        // Sun Belt was FCS (I-AA) in 1992 — all three route to FCS via eraYear filter
+        // (fbs_since set on each: louisiana has none so stays here as placeholder)
+        // Louisiana/ULM/Ark State were I-AA Sun Belt; eraYear filter handles them if fbs_since set
+        'sun-belt': [],
+        // placeholder — no CUSA in 1992
+        'cusa': [],
       }, 1992),
     },
 
