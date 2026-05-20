@@ -127,12 +127,12 @@
   --accent-light: #ecfdf5;
 }
 
-/* Conference Realignment — Burgundy → Bronze */
+/* Conference Realignment — Slate → Electric Blue */
 .app-realignment {
-  --grad-a:       #7C2D12;
-  --grad-b:       #92400E;
-  --accent:       #92400E;
-  --accent-light: #fef3c7;
+  --grad-a:       #1e2a3a;
+  --grad-b:       #1a3a5c;
+  --accent:       #2d9cdb;
+  --accent-light: #e8f6fd;
 }
 
 /* Fitness Visualizer — Red → Orange */

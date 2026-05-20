@@ -115,7 +115,7 @@ function showModal({ title = '', message = '', input = false, inputDefault = '',
         ${cancelLabel ? `<button id="_modal_cancel" style="padding:7px 16px;border-radius:6px;
           border:1.5px solid #ccc;background:#fff;font-size:14px;cursor:pointer">${cancelLabel}</button>` : ''}
         <button id="_modal_ok" style="padding:7px 16px;border-radius:6px;border:none;
-          background:${danger ? '#dc2626' : 'var(--accent, #92400E)'};color:#fff;
+          background:${danger ? '#dc2626' : 'var(--accent, #2d9cdb)'};color:#fff;
           font-size:14px;font-weight:600;cursor:pointer">${confirmLabel}</button>
       </div>
     `;
@@ -1156,7 +1156,7 @@ function generateExportCanvas() {
   for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
   const grad = ctx.createLinearGradient(0,0,W,0);
-  grad.addColorStop(0,'#7C2D12'); grad.addColorStop(0.5,'#92400E'); grad.addColorStop(1,'#7C2D12');
+  grad.addColorStop(0,'#1e2a3a'); grad.addColorStop(0.5,'#1a3a5c'); grad.addColorStop(1,'#1e2a3a');
   ctx.fillStyle = grad; ctx.fillRect(0,0,W,HEADER_H);
 
   ctx.font = 'bold 36px "Barlow Condensed", Arial Narrow, Arial';
