@@ -13,7 +13,7 @@ let ESPN_IDS        = {};
 
 const state = {
   conferences: {},
-  analytics: { travel: {}, rivalries: {}, tv_markets: {}, balance: {}, strength: {} },
+  analytics: { travel: {}, tv_markets: {}, balance: {}, strength: {}, state_coverage: {}, footprint: {} },
 };
 let baselineState = null;
 const history = { past: [], future: [] };
@@ -302,10 +302,6 @@ function recomputeAnalytics() {
     if (ids.length >= 2) { totalAvg += d; confCount++; }
   });
   travel._overall = confCount ? Math.round(totalAvg / confCount) : 0;
-
-  const preserved = countRivalriesPreserved(confs);
-  const total     = countTotalRivalries();
-  const rivalries = { preserved, total, pct: total ? Math.round((preserved / total) * 100) : 0 };
 
   const tv_markets = {};
   Object.entries(confs).forEach(([cid, ids]) => {
