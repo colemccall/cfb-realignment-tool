@@ -227,31 +227,6 @@ function avgPairwiseDist(teamIds) {
   return count ? Math.round(total / count) : 0;
 }
 
-function countRivalriesPreserved(conferences) {
-  const tc = {};
-  Object.entries(conferences).forEach(([cid, ids]) => ids.forEach(id => (tc[id] = cid)));
-  let preserved = 0;
-  const counted = new Set();
-  ALL_TEAMS.forEach(team => {
-    (team.rivalries || []).forEach(rid => {
-      const key = [team.id, rid].sort().join('|');
-      if (!counted.has(key)) {
-        counted.add(key);
-        if (tc[team.id] && tc[rid] && tc[team.id] === tc[rid]) preserved++;
-      }
-    });
-  });
-  return preserved;
-}
-
-function countTotalRivalries() {
-  const counted = new Set();
-  ALL_TEAMS.forEach(team => {
-    (team.rivalries || []).forEach(rid => counted.add([team.id, rid].sort().join('|')));
-  });
-  return counted.size;
-}
-
 function computeStrengthScores(conferences) {
   const teamMap = {};
   ALL_TEAMS.forEach(t => (teamMap[t.id] = t));
@@ -291,6 +266,32 @@ function computeStrengthScores(conferences) {
   return scores;
 }
 
+function bboxAreaMiles(teams) {
+  if (teams.length < 2) return 0;
+  const lats = teams.map(t => t.lat), lngs = teams.map(t => t.lng);
+  const latSpan = Math.max(...lats) - Math.min(...lats);
+  const lngSpan = Math.max(...lngs) - Math.min(...lngs);
+  const midLat = (Math.max(...lats) + Math.min(...lats)) / 2;
+  return Math.round(latSpan * 69 * lngSpan * 69 * Math.cos(midLat * Math.PI / 180));
+}
+
+function computeCommissionerScore() {
+  const { travel, balance, state_coverage } = state.analytics;
+  const travelScore = Math.max(0, Math.round(((2000 - travel._overall) / 1200) * 30));
+  const counts = Object.values(balance.counts).filter(n => n > 0);
+  const outliers = counts.filter(n => n < 8 || n > 16).length;
+  const balScore = Math.max(0, 30 - outliers * 8);
+  const coveredMarkets = new Set(
+    Object.values(state.conferences).flat()
+      .map(id => ALL_TEAMS.find(t => t.id === id))
+      .filter(t => t && (t.tv_market_size || 999) <= 25)
+      .map(t => t.tv_market)
+  ).size;
+  const mktScore = Math.min(20, Math.round((coveredMarkets / 15) * 20));
+  const stateScore = Math.min(20, Math.round(((state_coverage._total || 0) / 35) * 20));
+  return Math.min(100, travelScore + balScore + mktScore + stateScore);
+}
+
 function recomputeAnalytics() {
   const confs = state.conferences;
   const travel = {};
@@ -325,7 +326,26 @@ function recomputeAnalytics() {
 
   const strength = computeStrengthScores(confs);
 
-  state.analytics = { travel, rivalries, tv_markets, balance, strength };
+  // State coverage per conference + total
+  const state_coverage = {};
+  Object.entries(confs).forEach(([cid, ids]) => {
+    const teams = ids.map(id => ALL_TEAMS.find(t => t.id === id)).filter(Boolean);
+    state_coverage[cid] = new Set(teams.map(t => t.state)).size;
+  });
+  state_coverage._total = new Set(
+    Object.values(confs).flat()
+      .map(id => ALL_TEAMS.find(t => t.id === id))
+      .filter(Boolean).map(t => t.state)
+  ).size;
+
+  // Geographic footprint (bounding box area in sq miles) per conference
+  const footprint = {};
+  Object.entries(confs).forEach(([cid, ids]) => {
+    const teams = ids.map(id => ALL_TEAMS.find(t => t.id === id)).filter(Boolean);
+    footprint[cid] = bboxAreaMiles(teams);
+  });
+
+  state.analytics = { travel, tv_markets, balance, strength, state_coverage, footprint };
 }
 
 let _analyticsTimer = null;
@@ -367,6 +387,7 @@ function renderHeader() {
           <button class="btn-action" id="btn-analytics-toggle" title="Analytics">📊 Stats</button>
           <button class="btn-action" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
           <button class="btn-action" id="btn-reset">Reset</button>
+          <button class="btn-action" id="btn-random" title="Random Realignment">🎲 Random</button>
           <div class="scenarios-wrap">
             <button class="btn-action btn-action--primary" id="btn-scenarios">💾 Scenarios ▾</button>
             <div class="scenarios-dropdown" id="scenarios-dropdown"></div>
@@ -391,6 +412,7 @@ function renderHeader() {
     </div>
   `;
   document.getElementById('btn-reset').addEventListener('click', handleReset);
+  document.getElementById('btn-random').addEventListener('click', randomRealignment);
   document.getElementById('btn-undo').addEventListener('click', undo);
   document.getElementById('btn-analytics-toggle')?.addEventListener('click', () => {
     document.getElementById('analytics-sidebar')?.classList.toggle('mobile-open');
@@ -558,9 +580,9 @@ function escapeHtml(s) {
 function renderAnalyticsPanel() {
   const panel = document.getElementById('analytics-panel');
   if (!panel) return;
-  const { travel, rivalries, tv_markets, balance, strength } = state.analytics;
+  const { travel, tv_markets, balance, strength, state_coverage, footprint } = state.analytics;
 
-  let travelBase = null, rivalBase = null;
+  let travelBase = null, coverageBase = null;
   if (baselineState) {
     let bTotal = 0, bCount = 0;
     Object.entries(baselineState).forEach(([, ids]) => {
@@ -568,13 +590,20 @@ function renderAnalyticsPanel() {
       if (ids.length >= 2) { bTotal += d; bCount++; }
     });
     travelBase = bCount ? Math.round(bTotal / bCount) : 0;
-    rivalBase  = countRivalriesPreserved(baselineState);
+    coverageBase = new Set(
+      Object.values(baselineState).flat()
+        .map(id => ALL_TEAMS.find(t => t.id === id))
+        .filter(Boolean).map(t => t.state)
+    ).size;
   }
 
-  const tDeltaCls = travelBase !== null ? deltaClass(travel._overall, travelBase, true)  : 'flat';
-  const tDeltaTxt = travelBase !== null ? deltaSymbol(travel._overall, travelBase) : '—';
-  const rDeltaCls = rivalBase  !== null ? deltaClass(rivalries.preserved, rivalBase, false) : 'flat';
-  const rDeltaTxt = rivalBase  !== null ? deltaSymbol(rivalries.preserved, rivalBase) : '—';
+  const tDeltaCls  = travelBase   !== null ? deltaClass(travel._overall, travelBase, true) : 'flat';
+  const tDeltaTxt  = travelBase   !== null ? deltaSymbol(travel._overall, travelBase) : '—';
+  const covDeltaCls = coverageBase !== null ? deltaClass(state_coverage._total, coverageBase, false) : 'flat';
+  const covDeltaTxt = coverageBase !== null ? deltaSymbol(state_coverage._total, coverageBase) : '—';
+
+  const csScore = computeCommissionerScore();
+  const csGrade = csScore >= 85 ? 'A' : csScore >= 70 ? 'B' : csScore >= 55 ? 'C' : csScore >= 40 ? 'D' : 'F';
 
   // Non-empty conferences (exclude FCS for analytics display)
   const nonEmpty = ALL_CONFERENCES.filter(c => c.id !== 'fcs' && (balance.counts[c.id] || 0) > 0);
@@ -608,6 +637,14 @@ function renderAnalyticsPanel() {
     }).join('');
 
   panel.innerHTML = `
+    <div class="commissioner-score-banner">
+      <div>
+        <div class="cs-label">Commissioner Score</div>
+        <div class="cs-number">${csScore}<span style="font-size:14px;opacity:0.6">/100</span></div>
+        <div class="cs-label" style="margin-top:2px">Travel · Balance · Markets · Geography</div>
+      </div>
+      <div class="cs-grade">${csGrade}</div>
+    </div>
     <div class="analytics-header">
       <span class="bs-display-sm">Analytics</span>
     </div>
@@ -619,10 +656,10 @@ function renderAnalyticsPanel() {
         <div class="bs-analytic-delta ${tDeltaCls}">${tDeltaTxt}</div>
       </div>
       <div class="bs-analytic">
-        <div class="bs-analytic-label">Rivalries</div>
-        <div class="bs-analytic-value">${rivalries.preserved}/${rivalries.total}</div>
-        <div class="bs-analytic-sub">${rivalries.pct}% preserved</div>
-        <div class="bs-analytic-delta ${rDeltaCls}">${rDeltaTxt}</div>
+        <div class="bs-analytic-label">States Covered</div>
+        <div class="bs-analytic-value">${state_coverage._total}</div>
+        <div class="bs-analytic-sub">across all confs</div>
+        <div class="bs-analytic-delta ${covDeltaCls}">${covDeltaTxt}</div>
       </div>
       <div class="bs-analytic">
         <div class="bs-analytic-label">Balance</div>
@@ -652,6 +689,19 @@ function renderAnalyticsPanel() {
           <span class="travel-conf" style="color:${c.color}">${c.name}</span>
           <span class="travel-val">${(travel[c.id] || 0).toLocaleString()} mi</span>
         </div>`).join('')}
+    </div>
+    <div class="analytics-section">
+      <div class="analytics-section-title">Geographic Footprint</div>
+      ${nonEmpty.map(c => {
+        const sqmi = footprint[c.id] || 0;
+        const label = sqmi >= 1000000 ? (sqmi/1000000).toFixed(1)+'M sq mi'
+                    : sqmi >= 1000    ? Math.round(sqmi/1000)+'k sq mi'
+                    : sqmi + ' sq mi';
+        return `<div class="travel-row">
+          <span class="travel-conf" style="color:${c.color}">${c.name}</span>
+          <span class="travel-val">${label}</span>
+        </div>`;
+      }).join('')}
     </div>
     <div class="analytics-section">
       <div class="analytics-section-title">Top TV Markets by Conf</div>
@@ -1007,13 +1057,6 @@ function showSchoolCard(team) {
     ? `<img class="sc-logo" src="${url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="sc-logo-swatch" style="background:${team.primary_color};display:none"></div>`
     : `<div class="sc-logo-swatch" style="background:${team.primary_color}"></div>`;
 
-  // Resolve rivalry names
-  const teamMap = {};
-  ALL_TEAMS.forEach(t => (teamMap[t.id] = t));
-  const rivalNames = (team.rivalries || [])
-    .map(rid => teamMap[rid]?.name || rid)
-    .slice(0, 6);
-
   panel.innerHTML = `
     <div class="sc-header">
       ${logoHtml}
@@ -1040,13 +1083,6 @@ function showSchoolCard(team) {
         <span class="sc-stat-label">TV Market</span>
         <span class="sc-stat-value">${team.tv_market} (#${team.tv_market_size})</span>
       </div>
-      ${rivalNames.length ? `
-        <div class="sc-rivalries">
-          <div class="sc-rivalries-label">Key Rivalries</div>
-          <div class="sc-rivalries-list">
-            ${rivalNames.map(n => `<span class="sc-rival-pill">${n}</span>`).join('')}
-          </div>
-        </div>` : ''}
       <div class="sc-colors">
         <div class="sc-color-chip" style="background:${team.primary_color}" title="Primary"></div>
         ${team.secondary_color ? `<div class="sc-color-chip" style="background:${team.secondary_color}" title="Secondary"></div>` : ''}
@@ -1109,6 +1145,23 @@ async function handleReset() {
   recomputeAnalytics(); renderAnalyticsPanel(); renderMain(); scheduleHashUpdate();
   const slider = document.getElementById('timeline-slider');
   if (slider) { slider.value = 2026; updateTimelineLabel(2026); }
+}
+
+function randomRealignment() {
+  pushHistory();
+  const confIds = Object.keys(state.conferences).filter(cid => cid !== 'fcs');
+  const fcsTeams = state.conferences['fcs'] || [];
+  const pool = confIds.flatMap(cid => state.conferences[cid]);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const per = Math.floor(pool.length / confIds.length);
+  confIds.forEach((cid, i) => { state.conferences[cid] = pool.slice(i * per, (i + 1) * per); });
+  state.conferences[confIds.at(-1)].push(...pool.slice(confIds.length * per));
+  if (fcsTeams.length) state.conferences['fcs'] = fcsTeams;
+  scheduleAnalytics(); renderMain(); scheduleHashUpdate();
+  showToast('🎲 Chaos achieved. Good luck explaining this to the fans.');
 }
 
 // ─── EXPORT: CANVAS INFOGRAPHIC ──────────────────────────────────────────────
@@ -1196,12 +1249,13 @@ function generateExportCanvas() {
 
   const statsY = cy+CONF_BLOCK_H+12;
   ctx.fillStyle='rgba(255,255,255,0.05)'; roundRect(ctx,PAD,statsY,W-PAD*2,STATS_H,8); ctx.fill();
-  const { travel, rivalries, balance } = state.analytics;
+  const { travel, balance, state_coverage } = state.analytics;
+  const csExport = computeCommissionerScore();
   const stats = [
     { label:'Avg Travel', value:`${travel._overall.toLocaleString()} mi/conf` },
-    { label:'Rivalries Preserved', value:`${rivalries.preserved}/${rivalries.total} (${rivalries.pct}%)` },
+    { label:'States Covered', value:`${state_coverage._total} states` },
     { label:'Team Balance', value:`avg ${balance.avg} · min ${balance.min} · max ${balance.max}` },
-    { label:'Conferences', value:`${activeConfs.length} active` },
+    { label:'Commissioner Score', value:`${csExport}/100` },
   ];
   const statW=(W-PAD*2)/stats.length;
   stats.forEach((s,i) => {
