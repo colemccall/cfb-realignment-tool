@@ -576,106 +576,15 @@ function escapeHtml(s) {
 function renderAnalyticsPanel() {
   const panel = document.getElementById('analytics-panel');
   if (!panel) return;
-  const { travel, tv_markets, balance, strength } = state.analytics;
-
-  let travelBase = null;
-  if (baselineState) {
-    let bTotal = 0, bCount = 0;
-    Object.entries(baselineState).forEach(([, ids]) => {
-      const d = avgPairwiseDist(ids);
-      if (ids.length >= 2) { bTotal += d; bCount++; }
-    });
-    travelBase = bCount ? Math.round(bTotal / bCount) : 0;
-  }
-
-  const tDeltaCls = travelBase !== null ? deltaClass(travel._overall, travelBase, true) : 'flat';
-  const tDeltaTxt = travelBase !== null ? deltaSymbol(travel._overall, travelBase) : '—';
-
-  // Count unassigned teams (in no conference, or only in FCS)
-  const assignedIds = new Set(
-    Object.entries(state.conferences)
-      .filter(([cid]) => cid !== 'fcs')
-      .flatMap(([, ids]) => ids)
-  );
-  const unassigned = ALL_TEAMS.filter(t => !assignedIds.has(t.id) && !(state.conferences['fcs'] || []).includes(t.id)).length;
-
-  // Non-empty conferences (exclude FCS)
-  const nonEmpty = ALL_CONFERENCES.filter(c => c.id !== 'fcs' && (balance.counts[c.id] || 0) > 0);
-
-  // Top 3 TV markets across all conferences
-  const topMarkets = [...new Set(Object.values(tv_markets).flat())].slice(0, 3).join(', ') || '—';
-
-  // Strength scores sorted descending
-  const maxStrength = Math.max(...Object.values(strength), 1);
-  const strengthRows = nonEmpty
-    .filter(c => (strength[c.id] || 0) > 0)
-    .sort((a, b) => (strength[b.id] || 0) - (strength[a.id] || 0))
-    .map(c => {
-      const score = strength[c.id] || 0;
-      const pct   = Math.round((score / maxStrength) * 100);
-      return `<div class="strength-row">
-        <span class="strength-conf" style="color:${c.color}">${c.name}</span>
-        <div class="strength-bar-wrap">
-          <div class="strength-bar-fill" style="width:${pct}%;background:${c.color}"></div>
-        </div>
-        <span class="strength-score">${score}</span>
-      </div>`;
-    }).join('');
-
-  const balanceRows = nonEmpty.map(c => {
-    const count = balance.counts[c.id] || 0;
-    const warn  = count < 8 || count > 20;
-    return `<div class="balance-row ${warn ? 'balance-warn' : ''}">
-      <span class="balance-conf" style="color:${c.color}">${c.name}</span>
-      <span class="balance-count">${count} teams ${warn ? '⚠' : ''}</span>
-    </div>`;
-  }).join('');
-
+  // TODO: redesign analytics panel
   panel.innerHTML = `
     <div class="analytics-header">
       <span class="bs-display-sm">Analytics</span>
     </div>
-    <div class="bs-analytics-grid">
-      <div class="bs-analytic">
-        <div class="bs-analytic-label">Avg Travel</div>
-        <div class="bs-analytic-value">${travel._overall.toLocaleString()}</div>
-        <div class="bs-analytic-sub">miles / conf</div>
-        <div class="bs-analytic-delta ${tDeltaCls}">${tDeltaTxt}</div>
-      </div>
-      <div class="bs-analytic">
-        <div class="bs-analytic-label">Unassigned</div>
-        <div class="bs-analytic-value">${unassigned}</div>
-        <div class="bs-analytic-sub">teams w/o conf</div>
-        <div class="bs-analytic-delta ${unassigned === 0 ? 'up' : 'down'}">${unassigned === 0 ? '✓ All placed' : `${unassigned} floating`}</div>
-      </div>
-      <div class="bs-analytic">
-        <div class="bs-analytic-label">Balance</div>
-        <div class="bs-analytic-value">${balance.avg}</div>
-        <div class="bs-analytic-sub">avg teams</div>
-        <div class="bs-analytic-delta flat">min ${balance.min} · max ${balance.max}</div>
-      </div>
-      <div class="bs-analytic">
-        <div class="bs-analytic-label">Top Markets</div>
-        <div class="bs-analytic-value" style="font-size:12px;line-height:1.3">${topMarkets}</div>
-        <div class="bs-analytic-sub">by DMA rank</div>
-        <div class="bs-analytic-delta flat">&nbsp;</div>
-      </div>
-    </div>
-    <div class="analytics-section">
-      <div class="analytics-section-title">Conference Strength</div>
-      ${strengthRows || '<div style="font-size:11px;color:var(--text-muted)">—</div>'}
-    </div>
-    <div class="analytics-section">
-      <div class="analytics-section-title">Conference Balance</div>
-      ${balanceRows}
-    </div>
-    <div class="analytics-section">
-      <div class="analytics-section-title">Travel Burden</div>
-      ${nonEmpty.map(c => `
-        <div class="travel-row">
-          <span class="travel-conf" style="color:${c.color}">${c.name}</span>
-          <span class="travel-val">${(travel[c.id] || 0).toLocaleString()} mi</span>
-        </div>`).join('')}
+    <div style="padding:24px 16px;color:var(--text-muted);font-size:13px;line-height:1.7;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">📊</div>
+      <strong style="color:var(--text);display:block;margin-bottom:6px">Coming Soon</strong>
+      Analytics redesign in progress.<br>Drag teams and check back here.
     </div>
     <div id="ad-sidebar" class="ad-placeholder ad-sidebar"><span>Advertisement · 300×250</span></div>
   `;
