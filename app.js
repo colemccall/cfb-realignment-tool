@@ -576,9 +576,9 @@ function escapeHtml(s) {
 function renderAnalyticsPanel() {
   const panel = document.getElementById('analytics-panel');
   if (!panel) return;
-  const { travel, tv_markets, balance, strength, state_coverage, footprint } = state.analytics;
+  const { travel, tv_markets, balance, strength } = state.analytics;
 
-  let travelBase = null, coverageBase = null;
+  let travelBase = null;
   if (baselineState) {
     let bTotal = 0, bCount = 0;
     Object.entries(baselineState).forEach(([, ids]) => {
@@ -586,34 +586,24 @@ function renderAnalyticsPanel() {
       if (ids.length >= 2) { bTotal += d; bCount++; }
     });
     travelBase = bCount ? Math.round(bTotal / bCount) : 0;
-    coverageBase = new Set(
-      Object.values(baselineState).flat()
-        .map(id => ALL_TEAMS.find(t => t.id === id))
-        .filter(Boolean).map(t => t.state)
-    ).size;
   }
 
-  const tDeltaCls  = travelBase   !== null ? deltaClass(travel._overall, travelBase, true) : 'flat';
-  const tDeltaTxt  = travelBase   !== null ? deltaSymbol(travel._overall, travelBase) : '—';
-  const covDeltaCls = coverageBase !== null ? deltaClass(state_coverage._total, coverageBase, false) : 'flat';
-  const covDeltaTxt = coverageBase !== null ? deltaSymbol(state_coverage._total, coverageBase) : '—';
+  const tDeltaCls = travelBase !== null ? deltaClass(travel._overall, travelBase, true) : 'flat';
+  const tDeltaTxt = travelBase !== null ? deltaSymbol(travel._overall, travelBase) : '—';
 
-  const csScore = computeCommissionerScore();
-  const csGrade = csScore >= 85 ? 'A' : csScore >= 70 ? 'B' : csScore >= 55 ? 'C' : csScore >= 40 ? 'D' : 'F';
+  // Count unassigned teams (in no conference, or only in FCS)
+  const assignedIds = new Set(
+    Object.entries(state.conferences)
+      .filter(([cid]) => cid !== 'fcs')
+      .flatMap(([, ids]) => ids)
+  );
+  const unassigned = ALL_TEAMS.filter(t => !assignedIds.has(t.id) && !(state.conferences['fcs'] || []).includes(t.id)).length;
 
-  // Non-empty conferences (exclude FCS for analytics display)
+  // Non-empty conferences (exclude FCS)
   const nonEmpty = ALL_CONFERENCES.filter(c => c.id !== 'fcs' && (balance.counts[c.id] || 0) > 0);
 
-  const balanceRows = nonEmpty.map(c => {
-    const count = balance.counts[c.id] || 0;
-    const warn  = count < 8 || count > 20;
-    return `<div class="balance-row ${warn ? 'balance-warn' : ''}">
-      <span class="balance-conf" style="color:${c.color}">${c.name}</span>
-      <span class="balance-count">${count} teams ${warn ? '⚠' : ''}</span>
-    </div>`;
-  }).join('');
-
-  const topMarkets = [...new Set(Object.values(tv_markets).flat())].slice(0, 5).join(', ') || '—';
+  // Top 3 TV markets across all conferences
+  const topMarkets = [...new Set(Object.values(tv_markets).flat())].slice(0, 3).join(', ') || '—';
 
   // Strength scores sorted descending
   const maxStrength = Math.max(...Object.values(strength), 1);
@@ -632,15 +622,16 @@ function renderAnalyticsPanel() {
       </div>`;
     }).join('');
 
+  const balanceRows = nonEmpty.map(c => {
+    const count = balance.counts[c.id] || 0;
+    const warn  = count < 8 || count > 20;
+    return `<div class="balance-row ${warn ? 'balance-warn' : ''}">
+      <span class="balance-conf" style="color:${c.color}">${c.name}</span>
+      <span class="balance-count">${count} teams ${warn ? '⚠' : ''}</span>
+    </div>`;
+  }).join('');
+
   panel.innerHTML = `
-    <div class="commissioner-score-banner">
-      <div>
-        <div class="cs-label">Commissioner Score</div>
-        <div class="cs-number">${csScore}<span style="font-size:14px;opacity:0.6">/100</span></div>
-        <div class="cs-label" style="margin-top:2px">Travel · Balance · Markets · Geography</div>
-      </div>
-      <div class="cs-grade">${csGrade}</div>
-    </div>
     <div class="analytics-header">
       <span class="bs-display-sm">Analytics</span>
     </div>
@@ -652,10 +643,10 @@ function renderAnalyticsPanel() {
         <div class="bs-analytic-delta ${tDeltaCls}">${tDeltaTxt}</div>
       </div>
       <div class="bs-analytic">
-        <div class="bs-analytic-label">States Covered</div>
-        <div class="bs-analytic-value">${state_coverage._total}</div>
-        <div class="bs-analytic-sub">across all confs</div>
-        <div class="bs-analytic-delta ${covDeltaCls}">${covDeltaTxt}</div>
+        <div class="bs-analytic-label">Unassigned</div>
+        <div class="bs-analytic-value">${unassigned}</div>
+        <div class="bs-analytic-sub">teams w/o conf</div>
+        <div class="bs-analytic-delta ${unassigned === 0 ? 'up' : 'down'}">${unassigned === 0 ? '✓ All placed' : `${unassigned} floating`}</div>
       </div>
       <div class="bs-analytic">
         <div class="bs-analytic-label">Balance</div>
@@ -684,27 +675,6 @@ function renderAnalyticsPanel() {
         <div class="travel-row">
           <span class="travel-conf" style="color:${c.color}">${c.name}</span>
           <span class="travel-val">${(travel[c.id] || 0).toLocaleString()} mi</span>
-        </div>`).join('')}
-    </div>
-    <div class="analytics-section">
-      <div class="analytics-section-title">Geographic Footprint</div>
-      ${nonEmpty.map(c => {
-        const sqmi = footprint[c.id] || 0;
-        const label = sqmi >= 1000000 ? (sqmi/1000000).toFixed(1)+'M sq mi'
-                    : sqmi >= 1000    ? Math.round(sqmi/1000)+'k sq mi'
-                    : sqmi + ' sq mi';
-        return `<div class="travel-row">
-          <span class="travel-conf" style="color:${c.color}">${c.name}</span>
-          <span class="travel-val">${label}</span>
-        </div>`;
-      }).join('')}
-    </div>
-    <div class="analytics-section">
-      <div class="analytics-section-title">Top TV Markets by Conf</div>
-      ${nonEmpty.map(c => `
-        <div class="market-row">
-          <span class="market-conf" style="color:${c.color}">${c.name}</span>
-          <span class="market-val">${(tv_markets[c.id] || []).join(', ') || '—'}</span>
         </div>`).join('')}
     </div>
     <div id="ad-sidebar" class="ad-placeholder ad-sidebar"><span>Advertisement · 300×250</span></div>
@@ -1003,8 +973,10 @@ async function handleRenameConference(confId) {
 
 function renderMapTab(container) {
   container.innerHTML = `
-    <div id="leaflet-map" style="width:100%;height:100%;min-height:500px"></div>
-    <div id="school-card-panel"></div>
+    <div id="map-wrap" style="position:relative;width:100%;height:100%;min-height:500px">
+      <div id="leaflet-map" style="position:absolute;inset:0"></div>
+      <div id="school-card-panel"></div>
+    </div>
   `;
   requestAnimationFrame(() => initMap());
 }
@@ -1021,7 +993,8 @@ function initMap() {
     subdomains: 'abcd',
     maxZoom: 19,
   }).addTo(leafletMap);
-  renderMap();
+  // Force Leaflet to recalculate size after DOM is fully painted
+  setTimeout(() => { leafletMap.invalidateSize(); renderMap(); }, 50);
 }
 
 function renderMap() {
@@ -1245,13 +1218,12 @@ function generateExportCanvas() {
 
   const statsY = cy+CONF_BLOCK_H+12;
   ctx.fillStyle='rgba(255,255,255,0.05)'; roundRect(ctx,PAD,statsY,W-PAD*2,STATS_H,8); ctx.fill();
-  const { travel, balance, state_coverage } = state.analytics;
-  const csExport = computeCommissionerScore();
+  const { travel, balance } = state.analytics;
   const stats = [
     { label:'Avg Travel', value:`${travel._overall.toLocaleString()} mi/conf` },
-    { label:'States Covered', value:`${state_coverage._total} states` },
+    { label:'Conferences', value:`${activeConfs.length} active` },
     { label:'Team Balance', value:`avg ${balance.avg} · min ${balance.min} · max ${balance.max}` },
-    { label:'Commissioner Score', value:`${csExport}/100` },
+    { label:'Avg Teams/Conf', value:`${balance.avg}` },
   ];
   const statW=(W-PAD*2)/stats.length;
   stats.forEach((s,i) => {
